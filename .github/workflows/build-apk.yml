@@ -34,10 +34,49 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug --stacktrace --no-daemon
+        run: |
+          set -o pipefail
+          ./gradlew assembleDebug --stacktrace --no-daemon 2>&1 | tee /tmp/build.log
 
       - name: Run unit tests
-        run: ./gradlew testDebugUnitTest --stacktrace --no-daemon
+        run: |
+          set -o pipefail
+          ./gradlew testDebugUnitTest --stacktrace --no-daemon 2>&1 | tee /tmp/test.log
+
+      - name: Report errors as annotations
+        if: failure()
+        run: |
+          for LOG in /tmp/build.log /tmp/test.log; do
+            [ -f "$LOG" ] || continue
+            grep -E "^e: |error: |FAILURE: |What went wrong|Execution failed for task" "$LOG" \
+              | head -60 | while IFS= read -r line; do
+                trimmed="${line:0:900}"
+                echo "::error::${trimmed}"
+              done
+            echo "::error::[tail of $LOG] $(tail -c 600 "$LOG" | tr '\n' '|' )"
+          done
+          exit 0
+
+      - name: Commit logs on failure
+        if: failure()
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p .github/ci-logs
+          cp /tmp/build.log .github/ci-logs/build.log 2>/dev/null || true
+          cp /tmp/test.log .github/ci-logs/test.log 2>/dev/null || true
+          git add .github/ci-logs || true
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "ci: build logs (failed run) [skip ci]"
+          for i in 1 2 3; do
+            if git fetch origin "$BRANCH" && git rebase "origin/$BRANCH" && git push origin "HEAD:$BRANCH"; then exit 0; fi
+            sleep 5
+            git rebase --abort 2>/dev/null || true
+          done
+          echo "Could not commit logs."
+          exit 1
 
       - name: Verify APK artifact
         run: |
@@ -49,7 +88,6 @@ jobs:
           unzip -l "$APK" | grep -q "classes.dex" || { echo "classes.dex missing"; exit 1; }
           unzip -l "$APK" | grep -q "AndroidManifest.xml" || { echo "manifest missing"; exit 1; }
           unzip -l "$APK" | grep -q "resources.arsc" || { echo "resources.arsc missing"; exit 1; }
-          # Dump badging with aapt if available (best effort).
           AAPT="$(ls "$ANDROID_HOME"/build-tools/*/aapt 2>/dev/null | sort -V | tail -n 1 || true)"
           if [ -n "$AAPT" ] && [ -x "$AAPT" ]; then
             "$AAPT" dump badging "$APK" | head -5
@@ -79,13 +117,20 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+      - name: Clean stale CI logs after success
+        run: |
+          if [ -d .github/ci-logs ]; then
+            git rm -r --cached .github/ci-logs > /dev/null || true
+            rm -rf .github/ci-logs
+          fi
+
       - name: Commit APK artifact to branch
         env:
           BRANCH: ${{ github.ref_name }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add releases/DataLens-debug.apk releases/DataLens-debug.apk.sha256
+          git add -A releases/ .github/ci-logs 2>/dev/null || git add -A releases/
           if git diff --cached --quiet; then
             echo "No artifact changes to commit."
             exit 0

@@ -1,0 +1,144 @@
+name: Emulator smoke test
+
+# Manual workflow: boots a headless Android emulator, installs the built debug
+# APK from releases/, grants Usage Access, launches the app, taps through the
+# tabs, captures screenshots and checks logcat for crashes.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: emulator-smoke
+  cancel-in-progress: true
+
+jobs:
+  smoke-test:
+    name: Boot emulator + launch DataLens
+    runs-on: ubuntu-latest
+    timeout-minutes: 80
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Verify APK exists
+        run: |
+          test -s releases/DataLens-debug.apk || { echo "releases/DataLens-debug.apk missing"; exit 1; }
+          ls -la releases/
+
+      - name: Install emulator system image
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install \
+            "system-images;android-34;google_apis;x86_64" "emulator" > /dev/null
+          echo "no" | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \
+            --force -n datalens -k "system-images;android-34;google_apis;x86_64" -d pixel_5
+
+      - name: Boot emulator
+        run: |
+          if [ -e /dev/kvm ]; then
+            ACCEL="-accel on"
+            echo "KVM available — hardware acceleration"
+          else
+            ACCEL="-no-accel"
+            echo "No KVM — software emulation (slow boot expected)"
+          fi
+          nohup "$ANDROID_HOME/emulator/emulator" -avd datalens $ACCEL \
+            -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect \
+            -no-snapshot -no-metrics -camera-back none -memory 3072 \
+            > /tmp/emulator.log 2>&1 &
+          timeout 3000 adb wait-for-device
+          for i in $(seq 1 300); do
+            BOOT=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+            if [ "$BOOT" = "1" ]; then echo "Boot completed"; exit 0; fi
+            sleep 10
+          done
+          echo "Emulator failed to boot"; tail -50 /tmp/emulator.log; exit 1
+
+      - name: Install APK and grant Usage Access
+        run: |
+          adb devices
+          adb install -r releases/DataLens-debug.apk
+          adb shell appops set com.datalens.app android:get_usage_stats allow
+          adb shell pm grant com.datalens.app android.permission.POST_NOTIFICATIONS || true
+
+      - name: Launch and check for crashes
+        run: |
+          adb logcat -c
+          adb shell am start -W -n com.datalens.app/.MainActivity
+          sleep 15
+          mkdir -p docs/screenshots
+          adb exec-out screencap -p > docs/screenshots/01-dashboard.png
+          PID=$(adb shell pidof com.datalens.app)
+          if [ -z "$PID" ]; then
+            echo "App process not running!"
+            adb logcat -d | grep -E "FATAL|AndroidRuntime" -A 5 || true
+            exit 1
+          fi
+          echo "DataLens running with pid $PID"
+
+      - name: Tap through tabs
+        run: |
+          # Pixel 5: 1080x2340. Bottom navigation items are evenly spaced.
+          tap() { adb shell input tap "$1" "$2"; sleep 4; }
+          tap 135 2260   # Apps tab
+          adb exec-out screencap -p > docs/screenshots/02-apps.png
+          tap 675 2260   # Alerts tab
+          adb exec-out screencap -p > docs/screenshots/03-alerts.png
+          tap 945 2260   # Settings tab
+          adb exec-out screencap -p > docs/screenshots/04-settings.png
+          tap 135 2260   # back to Apps
+          # open the first app row (top of list area)
+          tap 540 900
+          sleep 4
+          adb exec-out screencap -p > docs/screenshots/05-app-detail.png
+          adb shell input keyevent 4   # back
+          sleep 2
+          tap 135 2260   # Overview tab
+          sleep 3
+          adb exec-out screencap -p > docs/screenshots/06-overview.png
+
+      - name: Check logcat for crashes
+        run: |
+          adb logcat -d > /tmp/logcat.txt
+          if grep -qE "FATAL EXCEPTION|Process: com.datalens.app.*died" /tmp/logcat.txt; then
+            echo "Crash detected:"; grep -E "FATAL EXCEPTION" -A 30 /tmp/logcat.txt
+            exit 1
+          fi
+          echo "No crashes detected."
+
+      - name: Upload screenshots as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: emulator-screenshots
+          path: docs/screenshots/
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Commit screenshots
+        if: success()
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/screenshots || true
+          if git diff --cached --quiet; then echo "No screenshots to commit"; exit 0; fi
+          git commit -m "ci: emulator smoke-test screenshots [skip ci]"
+          for i in 1 2 3; do
+            if git fetch origin "$BRANCH" && git rebase "origin/$BRANCH" && git push origin "HEAD:$BRANCH"; then exit 0; fi
+            sleep 5
+            git rebase --abort 2>/dev/null || true
+          done
+          echo "Could not commit screenshots (artifact upload still has them)."
+          exit 1
