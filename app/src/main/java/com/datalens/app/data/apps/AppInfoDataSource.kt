@@ -294,42 +294,42 @@ class AppInfoDataSource(private val context: Context) {
             pkg.contains("whatsapp") || pkg.contains("telegram") || pkg.contains("signal") ||
                 pkg.contains("sms") || pkg.contains("mms") || pkg.contains("messaging") ||
                 pkg.contains("messenger") || pkg.contains("hike") || pkg.contains("duo") ||
-                pkg.contains("meet") || pkg.contains("imo") ||
-                -> AppCategory.MESSAGING
+                pkg.contains("meet") || pkg.contains("imo")
+            -> AppCategory.MESSAGING
 
             pkg.contains("youtube") || pkg.contains("netflix") || pkg.contains("hotstar") ||
                 pkg.contains("jiocinema") || pkg.contains("primevideo") || pkg.contains("twitch") ||
                 pkg.contains("vimeo") || pkg.contains("sonyliv") || pkg.contains("zee5") ||
-                pkg.contains("mxplayer") || pkg.contains("voot") || pkg.contains("player") ||
-                -> AppCategory.VIDEO
+                pkg.contains("mxplayer") || pkg.contains("voot") || pkg.contains("player")
+            -> AppCategory.VIDEO
 
             pkg.contains("spotify") || pkg.contains("gaana") || pkg.contains("wynk") ||
                 pkg.contains("saavn") || pkg.contains("music") || pkg.contains("audio") ||
-                pkg.contains("podcast") || pkg.contains("hungama") || pkg.contains("rhapsody") ||
-                -> AppCategory.MUSIC_AUDIO
+                pkg.contains("podcast") || pkg.contains("hungama") || pkg.contains("rhapsody")
+            -> AppCategory.MUSIC_AUDIO
 
             pkg.contains("chrome") || pkg.contains("firefox") || pkg.contains("browser") ||
                 pkg.contains("opera") || pkg.contains("brave") || pkg.contains("edge") ||
-                pkg.contains("duckduckgo") || pkg.contains("sbrowser") ||
-                -> AppCategory.BROWSER
+                pkg.contains("duckduckgo") || pkg.contains("sbrowser")
+            -> AppCategory.BROWSER
 
             pkg.contains("facebook") || pkg.contains("instagram") || pkg.contains("tiktok") ||
                 pkg.contains("snapchat") || pkg.contains("discord") || pkg.contains("twitter") ||
                 pkg.contains("linkedin") || pkg.contains("threads") || pkg.contains("pinterest") ||
-                pkg.contains("reddit") || pkg.contains("sharechat") ||
-                -> AppCategory.SOCIAL
+                pkg.contains("reddit") || pkg.contains("sharechat")
+            -> AppCategory.SOCIAL
 
             pkg.contains("game") || pkg.contains("roblox") || pkg.contains("minecraft") ||
                 pkg.contains("clash") || pkg.contains("candy") || pkg.contains("pubg") ||
-                pkg.contains("bgmi") || pkg.contains("niantic") || pkg.contains("supercell") ||
-                -> AppCategory.GAMES
+                pkg.contains("bgmi") || pkg.contains("niantic") || pkg.contains("supercell")
+            -> AppCategory.GAMES
 
             pkg.contains("office") || pkg.contains("docs") || pkg.contains("sheets") ||
                 pkg.contains("slides") || pkg.contains("gmail") || pkg.contains("outlook") ||
                 pkg.contains("notion") || pkg.contains("evernote") || pkg.contains("keep") ||
                 pkg.contains("calendar") || pkg.contains("drive") || pkg.contains("todoist") ||
-                pkg.contains("trello") || pkg.contains("zoom") || pkg.contains("camscanner") ||
-                -> AppCategory.PRODUCTIVITY
+                pkg.contains("trello") || pkg.contains("zoom") || pkg.contains("camscanner")
+            -> AppCategory.PRODUCTIVITY
 
             else -> AppCategory.OTHER
         }
