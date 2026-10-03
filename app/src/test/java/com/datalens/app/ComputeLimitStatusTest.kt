@@ -19,6 +19,20 @@ class ComputeLimitStatusTest {
     }
 
     @Test
+    fun `unlimited plan reports unlimited status with used bytes`() {
+        val status = useCase(7 * gb, LimitConfig(isUnlimited = true, monthlyAllowanceBytes = 20 * gb))
+        assertTrue(status is LimitStatus.Unlimited)
+        assertEquals(7 * gb, (status as LimitStatus.Unlimited).usedBytes)
+    }
+
+    @Test
+    fun `unlimited wins over a stored allowance`() {
+        // isUnlimited takes precedence even if an allowance is still stored.
+        val status = useCase(25 * gb, LimitConfig(isUnlimited = true, monthlyAllowanceBytes = 20 * gb))
+        assertTrue(status is LimitStatus.Unlimited)
+    }
+
+    @Test
     fun `computes remaining and percentage`() {
         val allowance = 20L * gb
         val used = 8_722_864_128L // ~8.12 GiB

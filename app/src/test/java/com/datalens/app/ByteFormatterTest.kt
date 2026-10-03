@@ -90,4 +90,55 @@ class ByteFormatterTest {
         assertEquals("-12%", Formatters.signedPercent(-0.12))
         assertEquals("+8.5%", Formatters.signedPercent(0.085))
     }
+
+    // ---- decimal units mode (1 kB = 1000 B) ----
+    // The flag is global; every test restores it so order never matters.
+
+    @Test
+    fun `decimal mode uses 1000-based units`() {
+        ByteFormatter.useDecimalUnits = true
+        try {
+            assertEquals("0 B", ByteFormatter.format(0))
+            assertEquals("999 B", ByteFormatter.format(999))
+            assertEquals("1.0 KB", ByteFormatter.format(1_000))
+            // 4.2 kB
+            assertEquals("4.2 KB", ByteFormatter.format(4_200))
+            // 12.7 MB (decimal)
+            assertEquals("12.7 MB", ByteFormatter.format(12_700_000))
+            // 1.24 GB (decimal)
+            assertEquals("1.24 GB", ByteFormatter.format(1_240_000_000))
+        } finally {
+            ByteFormatter.useDecimalUnits = false
+        }
+    }
+
+    @Test
+    fun `decimal mode mirrors binary thresholds for large values`() {
+        ByteFormatter.useDecimalUnits = true
+        try {
+            // 843 * 1000^2 = 843 MB
+            assertEquals("843 MB", ByteFormatter.format(843_000_000L))
+            // 391 GB at 1000^3
+            assertEquals("391 GB", ByteFormatter.format(391_000_000_000L))
+        } finally {
+            ByteFormatter.useDecimalUnits = false
+        }
+    }
+
+    @Test
+    fun `decimal mode applies to compact formatting too`() {
+        ByteFormatter.useDecimalUnits = true
+        try {
+            assertEquals("1.0 KB", ByteFormatter.formatCompact(1_000))
+            assertEquals("943 MB", ByteFormatter.formatCompact(943_000_000L))
+        } finally {
+            ByteFormatter.useDecimalUnits = false
+        }
+    }
+
+    @Test
+    fun `binary mode is unaffected after decimal tests restore the flag`() {
+        assertEquals("1.0 KB", ByteFormatter.format(1024))
+        assertEquals("1.24 GB", ByteFormatter.format(1_331_439_907L))
+    }
 }

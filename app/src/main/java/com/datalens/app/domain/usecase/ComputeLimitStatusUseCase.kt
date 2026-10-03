@@ -7,6 +7,7 @@ import com.datalens.app.domain.model.LimitStatus
 class ComputeLimitStatusUseCase {
 
     operator fun invoke(usedBytes: Long, config: LimitConfig): LimitStatus {
+        if (config.isUnlimited) return LimitStatus.Unlimited(usedBytes)
         if (!config.isAllowanceConfigured) return LimitStatus.NotConfigured
         val allowance = config.monthlyAllowanceBytes
         val percentUsed = if (allowance > 0) usedBytes * 100.0 / allowance else 0.0

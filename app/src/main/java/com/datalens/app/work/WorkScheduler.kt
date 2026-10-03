@@ -34,10 +34,12 @@ object WorkScheduler {
                 .build(),
         )
 
+        // UPDATE (not KEEP) so an existing 6-hour schedule from an older app
+        // version is migrated to the current 1-hour cadence.
         workManager.enqueueUniquePeriodicWork(
             LIMIT_CHECK_WORK,
-            ExistingPeriodicWorkPolicy.KEEP,
-            PeriodicWorkRequestBuilder<LimitCheckWorker>(6, TimeUnit.HOURS)
+            ExistingPeriodicWorkPolicy.UPDATE,
+            PeriodicWorkRequestBuilder<LimitCheckWorker>(1, TimeUnit.HOURS)
                 .build(),
         )
     }

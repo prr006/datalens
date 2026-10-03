@@ -48,6 +48,9 @@ object TrackingController {
     /** Stops the tracking service and removes any leftover tracking notification. */
     fun stop(context: Context) {
         context.stopService(Intent(context, UsageTrackingService::class.java))
+        UsageTrackerCache.setTrackingEnabled(false)
+        // Refresh the widget so it honestly shows "Tracking off".
+        UsageWidgetProvider.pushUpdate(context)
         // Stopping a foreground service removes its notification automatically; the
         // explicit cancel only covers the rare boot-fallback post (see
         // TrackingEventsReceiver) when the service was never running.

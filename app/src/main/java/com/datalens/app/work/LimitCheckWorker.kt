@@ -4,61 +4,24 @@ import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.datalens.app.ServiceLocator
-import com.datalens.app.domain.model.LimitStatus
-import com.datalens.app.notifications.NotificationHelper
-import com.datalens.app.util.TimeUtils
-import com.datalens.app.util.UsageAccess
-import kotlinx.coroutines.flow.first
 
 /**
- * Periodically compares cycle usage against the configured allowance and posts a
- * warning when the configured threshold (or 100%) is crossed.
- *
- * Anti-spam: each (cycle, level) combination notifies at most once — the key is
- * reset automatically because it contains the cycle start date.
+ * Periodic alert pass (kept under its historical work name so existing schedules
+ * migrate cleanly). All logic lives in AlertCoordinator, which is shared with the
+ * usage-tracking service: cycle thresholds (50/75/90/100%), the daily usage
+ * threshold and per-app thresholds — each firing at most once per cycle/day via
+ * persisted anti-spam keys that re-arm automatically.
  */
 class LimitCheckWorker(appContext: Context, params: WorkerParameters) :
     CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
         return try {
-            doWorkInternal()
+            ServiceLocator.alertCoordinator.run(applicationContext)
             Result.success()
         } catch (_: Exception) {
+            // Alerts are best-effort; never fail the worker.
             Result.success()
         }
-    }
-
-    private suspend fun doWorkInternal() {
-        val context = applicationContext
-        val settings = ServiceLocator.settingsRepository
-        val prefs = settings.rawPreferences.first()
-
-        if (!prefs.notifications.enabled) return
-        if (!prefs.notifications.limitWarnings) return
-        if (!UsageAccess.isGranted(context)) return
-        if (!NotificationHelper.canPost(context)) return
-
-        val config = settings.uiSettings.first().limit
-        if (!config.isAllowanceConfigured) return
-
-        val cycleRange = TimeUtils.billingCycleRange(config.billingCycleStartDay)
-        val used = ServiceLocator.usageRepository.totals(cycleRange.start, cycleRange.end)
-        val status = ServiceLocator.computeLimitStatus(used.totalBytes, config)
-        if (status !is LimitStatus.Active) return
-
-        val level = if (status.percentUsed >= 100.0) 100 else config.warningThresholdPercent
-        if (status.percentUsed < level) return
-
-        val key = "${TimeUtils.isoDate(cycleRange.start)}:$level"
-        if (prefs.lastLimitNotifKey == key) return
-
-        NotificationHelper.showLimitWarning(
-            context,
-            percentUsed = status.percentUsed.toInt(),
-            usedBytes = status.usedBytes,
-            allowanceBytes = status.allowanceBytes,
-        )
-        settings.markLimitNotifPosted(key)
     }
 }

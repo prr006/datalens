@@ -12,9 +12,12 @@ import com.datalens.app.data.prefs.UserPreferencesDataSource
 import com.datalens.app.data.repository.SettingsRepository
 import com.datalens.app.data.repository.UsageRepository
 import com.datalens.app.domain.usecase.BuildUsageReportUseCase
+import com.datalens.app.domain.usecase.ComputeCycleInsightsUseCase
 import com.datalens.app.domain.usecase.ComputeLimitStatusUseCase
 import com.datalens.app.domain.usecase.DetectAnomaliesUseCase
+import com.datalens.app.domain.usecase.EvaluateAlertsUseCase
 import com.datalens.app.domain.usecase.GetOverviewDataUseCase
+import com.datalens.app.notifications.AlertCoordinator
 
 /**
  * Tiny hand-rolled service locator. The app is deliberately free of DI frameworks —
@@ -38,7 +41,13 @@ object ServiceLocator {
     val getOverviewData: GetOverviewDataUseCase by lazy { GetOverviewDataUseCase(usageRepository) }
     val detectAnomalies: DetectAnomaliesUseCase by lazy { DetectAnomaliesUseCase() }
     val computeLimitStatus: ComputeLimitStatusUseCase by lazy { ComputeLimitStatusUseCase() }
+    val computeCycleInsights: ComputeCycleInsightsUseCase by lazy { ComputeCycleInsightsUseCase() }
+    val evaluateAlerts: EvaluateAlertsUseCase by lazy { EvaluateAlertsUseCase() }
     val buildReport: BuildUsageReportUseCase by lazy { BuildUsageReportUseCase(usageRepository) }
+
+    val alertCoordinator: AlertCoordinator by lazy {
+        AlertCoordinator(usageRepository, settingsRepository, evaluateAlerts)
+    }
 
     fun init(context: Context) {
         if (initialized) return

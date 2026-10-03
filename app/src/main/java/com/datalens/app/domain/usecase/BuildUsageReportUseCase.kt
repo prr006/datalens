@@ -1,6 +1,7 @@
 package com.datalens.app.domain.usecase
 
 import com.datalens.app.data.repository.UsageRepository
+import com.datalens.app.domain.model.AppUsageInfo
 import com.datalens.app.domain.model.ReportData
 import com.datalens.app.domain.model.UsagePeriod
 import com.datalens.app.util.TimeUtils
@@ -35,7 +36,7 @@ class BuildUsageReportUseCase(private val repository: UsageRepository) {
             ReportFormat.CSV -> ReportData(
                 suggestedFileName = "datalens-usage-${period.id}-$dateStamp.csv",
                 mimeType = format.mimeType,
-                bytes = buildCsv(daily).toByteArray(Charsets.UTF_8),
+                bytes = buildUsageCsv(daily).toByteArray(Charsets.UTF_8),
             )
             ReportFormat.JSON -> ReportData(
                 suggestedFileName = "datalens-usage-${period.id}-$dateStamp.json",
@@ -45,32 +46,10 @@ class BuildUsageReportUseCase(private val repository: UsageRepository) {
         }
     }
 
-    private fun buildCsv(daily: List<Pair<LocalDate, List<com.datalens.app.domain.model.AppUsageInfo>>>): String {
-        val sb = StringBuilder()
-        sb.append("Date,App,Package,Download,Upload,Total\n")
-        for ((date, apps) in daily) {
-            for (app in apps) {
-                sb.append(csv(date.toString()))
-                    .append(',')
-                    .append(csv(app.appName))
-                    .append(',')
-                    .append(csv(app.packageName))
-                    .append(',')
-                    .append(app.receivedBytes)
-                    .append(',')
-                    .append(app.transmittedBytes)
-                    .append(',')
-                    .append(app.totalBytes)
-                    .append('\n')
-            }
-        }
-        return sb.toString()
-    }
-
     private fun buildJson(
         period: UsagePeriod,
         range: com.datalens.app.domain.model.DateRange,
-        daily: List<Pair<LocalDate, List<com.datalens.app.domain.model.AppUsageInfo>>>,
+        daily: List<Pair<LocalDate, List<AppUsageInfo>>>,
         now: Long,
     ): String {
         val root = JSONObject()
@@ -127,11 +106,41 @@ class BuildUsageReportUseCase(private val repository: UsageRepository) {
 
         return root.toString(2)
     }
-
-    private fun csv(field: String): String =
-        if (field.contains(',') || field.contains('"') || field.contains('\n')) {
-            "\"" + field.replace("\"", "\"\"") + "\""
-        } else {
-            field
-        }
 }
+
+/**
+ * Renders per-day/per-app usage as CSV with the columns
+ * Date, App, Package, Download, Upload, Total.
+ *
+ * Top-level and internal so it can be unit-tested on the JVM (org.json is
+ * stubbed in JVM unit tests, so only the CSV builder is covered there).
+ */
+internal fun buildUsageCsv(daily: List<Pair<LocalDate, List<AppUsageInfo>>>): String {
+    val sb = StringBuilder()
+    sb.append("Date,App,Package,Download,Upload,Total\n")
+    for ((date, apps) in daily) {
+        for (app in apps) {
+            sb.append(csvField(date.toString()))
+                .append(',')
+                .append(csvField(app.appName))
+                .append(',')
+                .append(csvField(app.packageName))
+                .append(',')
+                .append(app.receivedBytes)
+                .append(',')
+                .append(app.transmittedBytes)
+                .append(',')
+                .append(app.totalBytes)
+                .append('\n')
+        }
+    }
+    return sb.toString()
+}
+
+/** Escapes a CSV field (RFC 4180-style quoting). */
+internal fun csvField(field: String): String =
+    if (field.contains(',') || field.contains('"') || field.contains('\n')) {
+        "\"" + field.replace("\"", "\"\"") + "\""
+    } else {
+        field
+    }

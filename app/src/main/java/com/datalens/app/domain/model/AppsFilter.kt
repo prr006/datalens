@@ -11,6 +11,7 @@ enum class AppTypeFilter(val label: String) {
     ALL("All"),
     USER("User apps"),
     SYSTEM("System"),
+    PINNED("Pinned"),
     HIDDEN("Hidden"),
 }
 
@@ -30,6 +31,7 @@ object AppsFilter {
         apps: List<AppUsageInfo>,
         state: AppsFilterState,
         hiddenPackages: Set<String>,
+        pinnedPackages: Set<String> = emptySet(),
     ): List<AppUsageInfo> {
         var result = apps.asSequence()
 
@@ -38,6 +40,8 @@ object AppsFilter {
                 AppTypeFilter.ALL -> !hiddenPackages.contains(app.packageName)
                 AppTypeFilter.USER -> !app.isSystem && !hiddenPackages.contains(app.packageName)
                 AppTypeFilter.SYSTEM -> app.isSystem && !hiddenPackages.contains(app.packageName)
+                AppTypeFilter.PINNED -> pinnedPackages.contains(app.packageName) &&
+                    !hiddenPackages.contains(app.packageName)
                 AppTypeFilter.HIDDEN -> hiddenPackages.contains(app.packageName)
             }
         }

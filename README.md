@@ -8,6 +8,7 @@ usage, data limits, alerts and usage trends — entirely on-device.
 * No analytics, no ads, no tracking
 * The app does not even request the **INTERNET** permission — it physically cannot upload anything
 * All statistics come from Android's own `NetworkStatsManager`; nothing is simulated
+* Home-screen widget, Quick Settings tile, smart alerts, cycle insights, CSV/JSON export — all computed on-device from the same real data source
 
 ---
 
@@ -15,11 +16,11 @@ usage, data limits, alerts and usage trends — entirely on-device.
 
 | Tab | What it shows |
 |---|---|
-| **Overview** | Selected period, total mobile data, download/upload, top consumers with usage bars, hourly/daily chart, mobile-data summary (today / yesterday / 7 days / billing cycle) with honest comparisons, data-limit progress, pinned apps |
-| **Apps** | Every app with mobile usage (and all launchable apps, zero-filled): search, sort (total/download/upload/name, asc/desc), user/system/hidden filters, zero-usage toggle, category filter |
-| **App detail** | Large icon, package, UID, totals, download/upload, share of period, hourly/daily history chart, pin/hide, link to the system App Info screen |
+| **Overview** | Selected period, total mobile data, download/upload, top consumers with usage bars, hourly/daily chart, mobile-data summary (today / yesterday / 7 days / billing cycle) with honest comparisons, data-limit progress **with cycle insights** (days elapsed/remaining, average per day, safe daily pace, projection clearly labelled as an estimate), pinned apps |
+| **Apps** | Every app with mobile usage (and all launchable apps, zero-filled): search, sort (total/download/upload/name, asc/desc), user/system/**pinned**/hidden filters, zero-usage toggle, category filter |
+| **App detail** | Large icon, package, UID, totals, download/upload, share of period, **today & current-cycle quick stats**, hourly/daily history chart, pin/hide, link to the system App Info screen |
 | **Alerts** | Data-limit status, apps using unusually high data vs their recent 7-day average, apps dominating today's traffic, notification toggles |
-| **Settings** | Appearance (system/light/dark + dynamic colors), data limits (allowance, billing-cycle start day, daily target, warning threshold), notifications, persistent usage-notification tracking, pinned/hidden app management, CSV/JSON export & sharing, privacy notes, about |
+| **Settings** | Appearance (system/light/dark + dynamic colors + **binary/decimal units**), data limit & cycle (allowance, **unlimited plan option**, billing-cycle start day, daily target, warning threshold), **alerts** (automatic cycle thresholds + daily/per-app usage alerts), notifications, persistent usage-notification tracking with **refresh behavior**, pinned/hidden app management, **CSV/JSON export with range selection** (current cycle / last 30 days / custom), privacy notes, about |
 
 Supported periods: **Today · Yesterday · Last 7 days · Last 30 days · This billing
 cycle · Previous billing cycle · Custom range** (Material date-range picker).
@@ -83,6 +84,7 @@ shade with today's mobile data, e.g.
 DataLens
 Mobile data: 1.24 GB today
 ↑ 312 MB    ↓ 928 MB
+Cycle: 8.90 GB of 20 GB (44%)
 ```
 
 * **Same real data as the app.** The notification is built from
@@ -93,12 +95,19 @@ Mobile data: 1.24 GB today
   (`UsageTrackingService`) keeps the notification alive reliably. It only runs
   while you have tracking enabled and stops the moment you switch it off —
   including via the notification's own **Turn off** action.
-* **Update cadence (deliberately low-frequency):** immediately on start, then
-  **every 15 minutes**, plus one refresh when the **screen turns on** (so the
+* **Update cadence (adaptive, battery friendly):** immediately on start and on
+  every network change, then roughly **every 45 seconds while mobile data is the
+  active network** (if "Fast updates on mobile data" is enabled) and **every 5
+  minutes otherwise**, plus one refresh when the **screen turns on** (so the
   shade is fresh right after waking the device) and whenever you open the app.
-  No wakelocks are held: during deep sleep the timer pauses and refreshes on
-  wake. Android itself batches NetworkStats, so small lag is normal — this is a
-  statistics view, not real-time packet monitoring.
+  No wakelocks are held and no high-frequency polling happens: during deep sleep
+  the timer simply pauses and refreshes on wake. Cellular-vs-Wi-Fi detection is
+  event-driven via `registerDefaultNetworkCallback`. The heavier month-long
+  cycle query is throttled to once per 5 minutes. Android itself batches
+  NetworkStats, so small lag is normal — this is a statistics view, not
+  real-time packet monitoring.
+* **Cycle line:** the notification also shows current-cycle usage against your
+  allowance (or "unlimited plan"), from the same real data source.
 * **Reboot/update:** a `BOOT_COMPLETED` / `MY_PACKAGE_REPLACED` receiver restarts
   the service when tracking is enabled. `specialUse` services remain startable
   from BOOT_COMPLETED on Android 15 (only dataSync/camera/mediaPlayback/phoneCall/
@@ -228,17 +237,21 @@ CI runs' release APKs) have different signatures — uninstall one before instal
 the other.
 
 * Package id: `com.datalens.app`
-* minSdk 26 (Android 8.0) · targetSdk 35 (Android 15) · versionName 1.1.0
+* minSdk 26 (Android 8.0) · targetSdk 35 (Android 15) · versionName 1.2.0
 
 ## Testing checklist
 
-Verified by CI + unit tests: build, unit tests (formatting, cycle math, limits,
-anomalies, filters), APK contents (dex/manifest/resources), package id and signing.
+Verified by CI + unit tests: build, unit tests (formatting, cycle math & boundary
+clamping, cycle insights, alert policy & anti-spam keys, limits incl. unlimited,
+filters incl. pinned, notification text, decimal/binary units, CSV export),
+APK contents (dex/manifest/resources), package id and signing.
 
 Verified on device/emulator (manual): onboarding → Usage Access grant → dashboard
 shows real per-app mobile data → periods → search/sort/filters → app detail &
-charts → pin/hide → limits & billing cycle → alerts → notifications → CSV/JSON
-export → share sheet → light/dark/dynamic themes → empty & error states.
+charts → pin/hide → limits & billing cycle (incl. unlimited) → alerts → cycle
+insights & projection → notifications → widget & Quick Settings tile → CSV/JSON
+export with range selection → share sheet → light/dark/dynamic themes + units →
+empty & error states.
 
 See the repo's `docs/screenshots/` (when present) for emulator captures.
 
@@ -273,12 +286,21 @@ See the repo's `docs/screenshots/` (when present) for emulator captures.
 * **OEM quirks.** A few devices throw `SecurityException` even with Usage Access
   granted (subscriber-ID restrictions). DataLens shows an error state with a retry
   instead of crashing.
-* **Persistent notification freshness.** The tracking notification updates every
-  15 minutes (plus on screen-on and app open) — it is not a live counter, and the
-  underlying NetworkStats data itself is batched by Android. Aggressive
-  battery-saver modes or OEM app killers can delay updates or stop the service;
-  DataLens restarts it when the app is next opened and never claims real-time
-  accuracy.
+* **Persistent notification freshness.** The tracking notification updates
+  adaptively (~45 s on active mobile data, ~5 min otherwise, plus on screen-on,
+  network change and app open) — it is not a live counter, and the underlying
+  NetworkStats data itself is batched by Android. Aggressive battery-saver modes
+  or OEM app killers can delay updates or stop the service; DataLens restarts it
+  when the app is next opened and never claims real-time accuracy.
+* **Widget & tile data.** The home-screen widget and Quick Settings tile show the
+  last snapshot written by the tracking service / app refreshes. If tracking has
+  never run they say so honestly instead of showing invented zeros. The tile's
+  system-defined refresh cadence applies in addition to DataLens' pushes.
+* **Alerts are threshold checks, not predictions.** Cycle alerts fire at
+  50/75/90/100 % of the configured allowance, once per threshold per cycle; the
+  daily and per-app alerts fire at most once per day. The usage projection on the
+  Overview card is a linear ESTIMATE from real recorded data and is always
+  labelled as such — it is never presented as measured usage.
 * **Chart granularity.** "Today"/single days use hourly buckets; longer periods use
   daily buckets. This matches what Android can report accurately.
 * **Notification timing.** The daily summary is scheduled with WorkManager

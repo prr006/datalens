@@ -6,9 +6,11 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.datalens.app.domain.model.NotificationSettings
 import com.datalens.app.domain.model.ThemeMode
+import com.datalens.app.domain.model.UnitsMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -27,10 +29,17 @@ class UserPreferencesDataSource(private val context: Context) {
         val HIDE_SYSTEM_APPS = booleanPreferencesKey("hide_system_apps")
         // Persistent usage-tracking notification (foreground service).
         val USAGE_TRACKING_ENABLED = booleanPreferencesKey("usage_tracking_enabled")
+        // Units ("binary" = 1 KB = 1024 B, "decimal" = 1 KB = 1000 B).
+        val UNITS = stringPreferencesKey("units")
+        // Notification refresh behaviour: fast (~45 s) while mobile data is on.
+        val FREQUENT_REFRESH = booleanPreferencesKey("notif_frequent_refresh")
         // Anti-spam bookkeeping for notifications.
         val LAST_DAILY_NOTIF_DATE = stringPreferencesKey("last_daily_notif_date")
         val LAST_LIMIT_NOTIF_KEY = stringPreferencesKey("last_limit_notif_key")
         val LAST_HIGH_NOTIF_KEY = stringPreferencesKey("last_high_notif_key")
+        // Anti-spam keys for the threshold alerts (once per day / cycle / app+day).
+        val LAST_DAILY_THRESHOLD_ALERT = stringPreferencesKey("last_daily_threshold_alert")
+        val POSTED_APP_ALERTS = stringSetPreferencesKey("posted_app_alerts")
     }
 
     val preferences: Flow<UserPreferences> = context.dataStore.data.map { prefs ->
@@ -49,9 +58,13 @@ class UserPreferencesDataSource(private val context: Context) {
             ),
             hideSystemAppsByDefault = prefs[Keys.HIDE_SYSTEM_APPS] ?: false,
             usageTrackingEnabled = prefs[Keys.USAGE_TRACKING_ENABLED] ?: false,
+            units = if (prefs[Keys.UNITS] == "decimal") UnitsMode.DECIMAL else UnitsMode.BINARY,
+            frequentRefresh = prefs[Keys.FREQUENT_REFRESH] ?: true,
             lastDailyNotifDate = prefs[Keys.LAST_DAILY_NOTIF_DATE] ?: "",
             lastLimitNotifKey = prefs[Keys.LAST_LIMIT_NOTIF_KEY] ?: "",
             lastHighNotifKey = prefs[Keys.LAST_HIGH_NOTIF_KEY] ?: "",
+            lastDailyThresholdAlertKey = prefs[Keys.LAST_DAILY_THRESHOLD_ALERT] ?: "",
+            postedAppAlertKeys = prefs[Keys.POSTED_APP_ALERTS] ?: emptySet(),
         )
     }
 
@@ -79,6 +92,30 @@ class UserPreferencesDataSource(private val context: Context) {
     suspend fun setUsageTrackingEnabled(enabled: Boolean) =
         context.dataStore.edit { it[Keys.USAGE_TRACKING_ENABLED] = enabled }
 
+    suspend fun setUnits(mode: UnitsMode) = context.dataStore.edit {
+        it[Keys.UNITS] = if (mode == UnitsMode.DECIMAL) "decimal" else "binary"
+    }
+
+    suspend fun setFrequentRefresh(enabled: Boolean) =
+        context.dataStore.edit { it[Keys.FREQUENT_REFRESH] = enabled }
+
+    suspend fun markDailyThresholdAlertPosted(key: String) =
+        context.dataStore.edit { it[Keys.LAST_DAILY_THRESHOLD_ALERT] = key }
+
+    /**
+     * Records newly posted per-app alerts and prunes keys from days older than
+     * [keepFromIsoDate] (ISO dates compare correctly as strings).
+     */
+    suspend fun markAppAlertsPosted(newKeys: List<String>, keepFromIsoDate: String) =
+        context.dataStore.edit { prefs ->
+            val existing = prefs[Keys.POSTED_APP_ALERTS] ?: emptySet()
+            val kept = existing.filter { key ->
+                val date = key.removePrefix("app:").substringBefore(':')
+                date >= keepFromIsoDate
+            }.toSet()
+            prefs[Keys.POSTED_APP_ALERTS] = kept + newKeys.toSet()
+        }
+
     suspend fun setLastDailyNotifDate(date: String) =
         context.dataStore.edit { it[Keys.LAST_DAILY_NOTIF_DATE] = date }
 
@@ -95,7 +132,11 @@ data class UserPreferences(
     val notifications: NotificationSettings = NotificationSettings(),
     val hideSystemAppsByDefault: Boolean = false,
     val usageTrackingEnabled: Boolean = false,
+    val units: UnitsMode = UnitsMode.BINARY,
+    val frequentRefresh: Boolean = true,
     val lastDailyNotifDate: String = "",
     val lastLimitNotifKey: String = "",
     val lastHighNotifKey: String = "",
+    val lastDailyThresholdAlertKey: String = "",
+    val postedAppAlertKeys: Set<String> = emptySet(),
 )

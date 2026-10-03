@@ -59,6 +59,8 @@ import com.datalens.app.ui.components.DataLensPullToRefresh
 import com.datalens.app.ui.components.DisclaimerCard
 import com.datalens.app.ui.components.EmptyState
 import com.datalens.app.ui.components.ErrorState
+import com.datalens.app.ui.components.ExportDialog
+import com.datalens.app.ui.components.ExportSelection
 import com.datalens.app.ui.components.LimitCard
 import com.datalens.app.ui.components.LoadingState
 import com.datalens.app.ui.components.PeriodSelector
@@ -86,6 +88,7 @@ fun OverviewScreen(
                 settingsRepository = ServiceLocator.settingsRepository,
                 getOverviewData = ServiceLocator.getOverviewData,
                 computeLimitStatus = ServiceLocator.computeLimitStatus,
+                computeCycleInsights = ServiceLocator.computeCycleInsights,
                 buildReport = ServiceLocator.buildReport,
             )
         },
@@ -126,9 +129,9 @@ fun OverviewScreen(
                         Icon(Icons.Filled.Refresh, contentDescription = "Refresh")
                     }
                     ExportOverflowMenu(
-                        onExport = { format ->
+                        onExport = { format, selection ->
                             scope.launch {
-                                val report = viewModel.buildReport(format)
+                                val report = viewModel.buildReport(format, selection.toPeriodOrNull())
                                 if (report == null) {
                                     snackbarHostState.showSnackbar(
                                         context.getString(R.string.export_failed_message),
@@ -138,9 +141,9 @@ fun OverviewScreen(
                                 }
                             }
                         },
-                        onShare = {
+                        onShare = { format, selection ->
                             scope.launch {
-                                val report = viewModel.buildReport(ReportFormat.CSV)
+                                val report = viewModel.buildReport(format, selection.toPeriodOrNull())
                                 if (report == null) {
                                     snackbarHostState.showSnackbar(
                                         context.getString(R.string.export_failed_message),
@@ -200,31 +203,49 @@ fun OverviewScreen(
 
 @Composable
 private fun ExportOverflowMenu(
-    onExport: (ReportFormat) -> Unit,
-    onShare: () -> Unit,
+    onExport: (ReportFormat, ExportSelection) -> Unit,
+    onShare: (ReportFormat, ExportSelection) -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    var dialogVisible by remember { mutableStateOf(false) }
+    var shareDialog by remember { mutableStateOf(false) }
+
     IconButton(onClick = { menuOpen = true }) {
         Icon(Icons.Filled.MoreVert, contentDescription = "Export & more")
     }
     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
         DropdownMenuItem(
-            text = { Text("Export as CSV") },
+            text = { Text("Export report…") },
             leadingIcon = { Icon(Icons.Filled.DateRange, contentDescription = null) },
-            onClick = { menuOpen = false; onExport(ReportFormat.CSV) },
+            onClick = { menuOpen = false; shareDialog = false; dialogVisible = true },
         )
         DropdownMenuItem(
-            text = { Text("Export as JSON") },
-            leadingIcon = { Icon(Icons.Filled.DateRange, contentDescription = null) },
-            onClick = { menuOpen = false; onExport(ReportFormat.JSON) },
-        )
-        DropdownMenuItem(
-            text = { Text("Share usage report") },
+            text = { Text("Share report…") },
             leadingIcon = { Icon(Icons.Filled.Share, contentDescription = null) },
-            onClick = { menuOpen = false; onShare() },
+            onClick = { menuOpen = false; shareDialog = true; dialogVisible = true },
+        )
+    }
+
+    if (dialogVisible) {
+        ExportDialog(
+            share = shareDialog,
+            onDismiss = { dialogVisible = false },
+            onConfirm = { format, selection ->
+                if (shareDialog) onShare(format, selection) else onExport(format, selection)
+                dialogVisible = false
+            },
         )
     }
 }
+
+/** Maps an export-dialog selection to the corresponding usage period. */
+private fun com.datalens.app.ui.components.ExportSelection.toPeriodOrNull(): UsagePeriod? =
+    when (this) {
+        com.datalens.app.ui.components.ExportSelection.CurrentCycle -> UsagePeriod.CurrentCycle
+        com.datalens.app.ui.components.ExportSelection.LastThirtyDays -> UsagePeriod.LastThirtyDays
+        is com.datalens.app.ui.components.ExportSelection.Custom ->
+            UsagePeriod.Custom(start, endInclusive)
+    }
 
 @Composable
 private fun OverviewContent(
@@ -254,6 +275,7 @@ private fun OverviewContent(
             LimitCard(
                 status = state.limitStatus,
                 cycleRange = data.cycleRange,
+                insights = state.cycleInsights,
                 onConfigure = onOpenSettings,
             )
         }

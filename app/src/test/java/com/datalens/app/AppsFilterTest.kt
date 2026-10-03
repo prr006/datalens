@@ -155,4 +155,55 @@ class AppsFilterTest {
         )
         assertEquals(listOf("com.instagram.android"), result.map { it.packageName })
     }
+
+    @Test
+    fun `pinned filter shows only pinned apps`() {
+        val pinned = setOf("com.instagram.android", "com.example.notes")
+        val result = AppsFilter.apply(
+            apps,
+            AppsFilterState(typeFilter = AppTypeFilter.PINNED),
+            emptySet(),
+            pinnedPackages = pinned,
+        )
+        // Notes is pinned but has zero usage — the zero-usage rule still applies.
+        assertEquals(listOf("com.instagram.android"), result.map { it.packageName })
+    }
+
+    @Test
+    fun `pinned filter shows zero-usage pinned apps when enabled`() {
+        val pinned = setOf("com.instagram.android", "com.example.notes")
+        val result = AppsFilter.apply(
+            apps,
+            AppsFilterState(typeFilter = AppTypeFilter.PINNED, showZeroUsage = true),
+            emptySet(),
+            pinnedPackages = pinned,
+        )
+        assertEquals(
+            listOf("com.instagram.android", "com.example.notes"),
+            result.map { it.packageName },
+        )
+    }
+
+    @Test
+    fun `pinned filter excludes hidden apps even when pinned`() {
+        val hidden = setOf("com.instagram.android")
+        val result = AppsFilter.apply(
+            apps,
+            AppsFilterState(typeFilter = AppTypeFilter.PINNED),
+            hiddenPackages = hidden,
+            pinnedPackages = setOf("com.instagram.android"),
+        )
+        assertEquals(0, result.size)
+    }
+
+    @Test
+    fun `pinned filter without pinned apps is empty`() {
+        val result = AppsFilter.apply(
+            apps,
+            AppsFilterState(typeFilter = AppTypeFilter.PINNED),
+            emptySet(),
+            pinnedPackages = emptySet(),
+        )
+        assertEquals(0, result.size)
+    }
 }

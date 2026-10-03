@@ -12,11 +12,14 @@ import com.datalens.app.domain.model.NotificationSettings
 import com.datalens.app.domain.model.ReportData
 import com.datalens.app.domain.model.ThemeMode
 import com.datalens.app.domain.model.UiSettings
+import com.datalens.app.domain.model.UnitsMode
 import com.datalens.app.domain.model.UsagePeriod
 import com.datalens.app.domain.usecase.BuildUsageReportUseCase
 import com.datalens.app.domain.usecase.ComputeLimitStatusUseCase
 import com.datalens.app.domain.usecase.ReportFormat
 import com.datalens.app.notifications.NotificationHelper
+import com.datalens.app.ui.components.ExportSelection
+import com.datalens.app.util.ByteFormatter
 import com.datalens.app.notifications.TrackingController
 import com.datalens.app.util.TimeUtils
 import com.datalens.app.util.UsageAccess
@@ -150,10 +153,27 @@ class SettingsViewModel(
         settingsRepository.saveLimitConfig(config)
     }
 
-    suspend fun buildCycleReport(format: ReportFormat): ReportData? {
+    /** Sets the display units everywhere (applies immediately via ByteFormatter). */
+    fun setUnits(mode: UnitsMode) = viewModelScope.launch {
+        ByteFormatter.useDecimalUnits = mode == UnitsMode.DECIMAL
+        settingsRepository.setUnits(mode)
+    }
+
+    /** Fast (45 s) notification refresh while mobile data is active. */
+    fun setFrequentRefresh(enabled: Boolean) = viewModelScope.launch {
+        settingsRepository.setFrequentRefresh(enabled)
+    }
+
+    suspend fun buildReport(format: ReportFormat, selection: ExportSelection): ReportData? {
         return try {
             val settings = settingsRepository.uiSettings.first()
-            buildReport(UsagePeriod.CurrentCycle, settings.limit.billingCycleStartDay, format)
+            val period = when (selection) {
+                ExportSelection.CurrentCycle -> UsagePeriod.CurrentCycle
+                ExportSelection.LastThirtyDays -> UsagePeriod.LastThirtyDays
+                is ExportSelection.Custom ->
+                    UsagePeriod.Custom(selection.start, selection.endInclusive)
+            }
+            buildReport(period, settings.limit.billingCycleStartDay, format)
         } catch (_: Exception) {
             null
         }

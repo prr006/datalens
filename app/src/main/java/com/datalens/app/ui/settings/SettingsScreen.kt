@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -68,7 +69,10 @@ import com.datalens.app.ServiceLocator
 import com.datalens.app.domain.model.LimitConfig
 import com.datalens.app.domain.model.ReportData
 import com.datalens.app.domain.model.ThemeMode
+import com.datalens.app.domain.model.UnitsMode
 import com.datalens.app.domain.usecase.ReportFormat
+import com.datalens.app.ui.components.ExportDialog
+import com.datalens.app.ui.components.ExportSelection
 import com.datalens.app.ui.components.LimitCard
 import com.datalens.app.ui.components.rememberReportExporter
 import com.datalens.app.util.ByteFormatter
@@ -99,6 +103,8 @@ fun SettingsScreen(
     val exporter = rememberReportExporter(snackbarHostState, scope)
 
     var dialog by remember { mutableStateOf<SettingsDialog?>(null) }
+    var exportDialogVisible by remember { mutableStateOf(false) }
+    var exportDialog by remember { mutableStateOf(false) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -113,9 +119,9 @@ fun SettingsScreen(
         ActivityResultContracts.RequestPermission(),
     ) { viewModel.refreshNotificationPermission() }
 
-    fun exportReport(format: ReportFormat) {
+    fun exportReport(format: ReportFormat, selection: ExportSelection) {
         scope.launch {
-            val report: ReportData? = viewModel.buildCycleReport(format)
+            val report: ReportData? = viewModel.buildReport(format, selection)
             if (report == null) {
                 snackbarHostState.showSnackbar(context.getString(R.string.export_failed_message))
             } else {
@@ -124,9 +130,9 @@ fun SettingsScreen(
         }
     }
 
-    fun shareReport() {
+    fun shareReport(format: ReportFormat, selection: ExportSelection) {
         scope.launch {
-            val report = viewModel.buildCycleReport(ReportFormat.CSV)
+            val report = viewModel.buildReport(format, selection)
             if (report == null) {
                 snackbarHostState.showSnackbar(context.getString(R.string.export_failed_message))
             } else {
@@ -178,9 +184,15 @@ fun SettingsScreen(
                         )
                     }
                 }
+                SettingsRow(
+                    title = "Units",
+                    value = state.uiSettings.units.label.substringBefore(" ·"),
+                    supporting = state.uiSettings.units.label.substringAfter(" · "),
+                    onClick = { dialog = SettingsDialog.Units },
+                )
             }
 
-            SettingsSection(title = "Data") {
+            SettingsSection(title = "Data limit & cycle") {
                 val cycleRange = state.cycleRange
                 if (cycleRange != null) {
                     LimitCard(
@@ -191,10 +203,11 @@ fun SettingsScreen(
                 }
                 SettingsRow(
                     title = "Monthly allowance",
-                    value = if (state.uiSettings.limit.isAllowanceConfigured) {
-                        ByteFormatter.format(state.uiSettings.limit.monthlyAllowanceBytes)
-                    } else {
-                        "Not set"
+                    value = when {
+                        state.uiSettings.limit.isUnlimited -> "Unlimited"
+                        state.uiSettings.limit.isAllowanceConfigured ->
+                            ByteFormatter.format(state.uiSettings.limit.monthlyAllowanceBytes)
+                        else -> "Not set"
                     },
                     onClick = { dialog = SettingsDialog.Allowance },
                 )
@@ -221,6 +234,36 @@ fun SettingsScreen(
                     title = "Warning threshold",
                     value = "${state.uiSettings.limit.warningThresholdPercent}%",
                     onClick = { dialog = SettingsDialog.Threshold },
+                )
+            }
+
+            SettingsSection(title = "Alerts") {
+                Column(Modifier.padding(horizontal = 16.dp)) {
+                    Text(
+                        "Cycle alerts fire automatically at 50%, 75%, 90% and 100% of your " +
+                            "allowance — once per threshold per cycle. The two thresholds " +
+                            "below alert at most once per day.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                SettingsRow(
+                    title = "Daily usage alert",
+                    value = if (state.uiSettings.limit.dailyAlertThresholdBytes > 0L) {
+                        ByteFormatter.format(state.uiSettings.limit.dailyAlertThresholdBytes)
+                    } else {
+                        "Off"
+                    },
+                    onClick = { dialog = SettingsDialog.DailyAlert },
+                )
+                SettingsRow(
+                    title = "Per-app usage alert",
+                    value = if (state.uiSettings.limit.perAppAlertThresholdBytes > 0L) {
+                        ByteFormatter.format(state.uiSettings.limit.perAppAlertThresholdBytes)
+                    } else {
+                        "Off"
+                    },
+                    onClick = { dialog = SettingsDialog.PerAppAlert },
                 )
             }
 
@@ -304,6 +347,12 @@ fun SettingsScreen(
                             viewModel.setUsageTrackingEnabled(enabled)
                         },
                     )
+                    ToggleRow(
+                        label = "Fast updates on mobile data",
+                        checked = state.uiSettings.frequentRefresh,
+                        enabled = state.uiSettings.usageTrackingEnabled,
+                        onChecked = viewModel::setFrequentRefresh,
+                    )
                     Text(
                         "Shows:\n" +
                             "\u2022  Today\'s total\n" +
@@ -313,9 +362,10 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
-                        "Updates every 15 minutes and when the screen turns on, using the " +
-                            "same NetworkStatsManager data as the app (Android reports usage " +
-                            "in batches, so numbers may lag slightly).",
+                        "While mobile data is active the notification refreshes about every " +
+                            "45 seconds; otherwise every 5 minutes, plus when the screen " +
+                            "turns on. Same NetworkStatsManager data as the app (Android " +
+                            "reports usage in batches, so numbers may lag slightly).",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -360,27 +410,23 @@ fun SettingsScreen(
             SettingsSection(title = "Export & share") {
                 Column(Modifier.padding(horizontal = 16.dp)) {
                     Text(
-                        "Export the current billing cycle (${state.cycleRangeText ?: "…"}) as a " +
-                            "report. Files are saved locally — DataLens never uploads anything.",
+                        "Export real usage as CSV/JSON for the current cycle " +
+                            "(${state.cycleRangeText ?: "…"}), the last 30 days, or a custom " +
+                            "range. Files are saved locally — DataLens never uploads anything.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { exportReport(ReportFormat.CSV) }) {
+                        OutlinedButton(onClick = { exportDialog = false; exportDialogVisible = true }) {
                             Icon(Icons.Filled.DateRange, contentDescription = null)
                             Spacer(Modifier.width(6.dp))
-                            Text("Save CSV")
+                            Text("Export…")
                         }
-                        OutlinedButton(onClick = { exportReport(ReportFormat.JSON) }) {
-                            Icon(Icons.Filled.DateRange, contentDescription = null)
-                            Spacer(Modifier.width(6.dp))
-                            Text("Save JSON")
-                        }
-                        OutlinedButton(onClick = { shareReport() }) {
+                        OutlinedButton(onClick = { exportDialog = true; exportDialogVisible = true }) {
                             Icon(Icons.Filled.Share, contentDescription = null)
                             Spacer(Modifier.width(6.dp))
-                            Text("Share")
+                            Text("Share…")
                         }
                     }
                 }
@@ -411,16 +457,74 @@ fun SettingsScreen(
         }
     }
 
+    if (exportDialogVisible) {
+        ExportDialog(
+            share = exportDialog,
+            onDismiss = { exportDialogVisible = false },
+            onConfirm = { format, selection ->
+                if (exportDialog) shareReport(format, selection) else exportReport(format, selection)
+                exportDialogVisible = false
+            },
+        )
+    }
+
     when (val current = dialog) {
         SettingsDialog.Allowance -> ByteQuantityDialog(
             title = "Monthly allowance",
             initialBytes = state.uiSettings.limit.monthlyAllowanceBytes,
             onDismiss = { dialog = null },
             onSave = { bytes ->
-                viewModel.saveLimitConfig(state.uiSettings.limit.copy(monthlyAllowanceBytes = bytes))
+                viewModel.saveLimitConfig(
+                    state.uiSettings.limit.copy(
+                        monthlyAllowanceBytes = bytes,
+                        isUnlimited = false,
+                    ),
+                )
+                dialog = null
+            },
+            onSetUnlimited = {
+                viewModel.saveLimitConfig(
+                    state.uiSettings.limit.copy(isUnlimited = true, monthlyAllowanceBytes = 0L),
+                )
+                dialog = null
+            },
+            isUnlimitedNow = state.uiSettings.limit.isUnlimited,
+            allowRemove = true,
+        )
+
+        SettingsDialog.DailyAlert -> ByteQuantityDialog(
+            title = "Daily usage alert",
+            initialBytes = state.uiSettings.limit.dailyAlertThresholdBytes,
+            onDismiss = { dialog = null },
+            onSave = { bytes ->
+                viewModel.saveLimitConfig(
+                    state.uiSettings.limit.copy(dailyAlertThresholdBytes = bytes),
+                )
                 dialog = null
             },
             allowRemove = true,
+        )
+
+        SettingsDialog.PerAppAlert -> ByteQuantityDialog(
+            title = "Per-app usage alert",
+            initialBytes = state.uiSettings.limit.perAppAlertThresholdBytes,
+            onDismiss = { dialog = null },
+            onSave = { bytes ->
+                viewModel.saveLimitConfig(
+                    state.uiSettings.limit.copy(perAppAlertThresholdBytes = bytes),
+                )
+                dialog = null
+            },
+            allowRemove = true,
+        )
+
+        SettingsDialog.Units -> UnitsDialog(
+            current = state.uiSettings.units,
+            onDismiss = { dialog = null },
+            onSelect = { mode ->
+                viewModel.setUnits(mode)
+                dialog = null
+            },
         )
 
         SettingsDialog.DailyTarget -> ByteQuantityDialog(
@@ -456,7 +560,9 @@ fun SettingsScreen(
     }
 }
 
-private enum class SettingsDialog { Allowance, DailyTarget, BillingDay, Threshold }
+private enum class SettingsDialog {
+    Allowance, DailyTarget, BillingDay, Threshold, DailyAlert, PerAppAlert, Units,
+}
 
 @Composable
 private fun SettingsSection(title: String, content: @Composable () -> Unit) {
@@ -547,6 +653,8 @@ private fun ByteQuantityDialog(
     allowRemove: Boolean,
     onDismiss: () -> Unit,
     onSave: (Long) -> Unit,
+    onSetUnlimited: (() -> Unit)? = null,
+    isUnlimitedNow: Boolean = false,
 ) {
     val isGbInitial = initialBytes == 0L || initialBytes >= 1024L * 1024L * 1024L
     var unitBytes by remember { mutableStateOf(if (isGbInitial) 1024L * 1024L * 1024L else 1024L * 1024L) }
@@ -582,7 +690,11 @@ private fun ByteQuantityDialog(
                 }
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    if (initialBytes > 0) "Currently: ${ByteFormatter.format(initialBytes)}" else "Currently not set",
+                    when {
+                        isUnlimitedNow -> "Currently: unlimited plan"
+                        initialBytes > 0 -> "Currently: ${ByteFormatter.format(initialBytes)}"
+                        else -> "Currently not set"
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -598,11 +710,51 @@ private fun ByteQuantityDialog(
         },
         dismissButton = {
             Row {
+                if (onSetUnlimited != null) {
+                    TextButton(onClick = onSetUnlimited) { Text("Unlimited") }
+                }
                 if (allowRemove) {
                     TextButton(onClick = { onSave(0L) }) { Text("Remove") }
                 }
                 TextButton(onClick = onDismiss) { Text("Cancel") }
             }
+        },
+    )
+}
+
+@Composable
+private fun UnitsDialog(
+    current: UnitsMode,
+    onDismiss: () -> Unit,
+    onSelect: (UnitsMode) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Units") },
+        text = {
+            Column {
+                Text(
+                    "How byte counts are displayed everywhere in DataLens.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                UnitsMode.entries.forEach { mode ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .selectable(selected = current == mode, onClick = { onSelect(mode) }),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected = current == mode, onClick = { onSelect(mode) })
+                        Text(mode.label, Modifier.padding(start = 4.dp))
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
         },
     )
 }

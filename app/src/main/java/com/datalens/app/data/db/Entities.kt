@@ -25,4 +25,7 @@ data class LimitConfigEntity(
     val dailyTargetBytes: Long = 0L,
     val billingCycleStartDay: Int = 1,
     val warningThresholdPercent: Int = 75,
+    val isUnlimited: Boolean = false,
+    val dailyAlertThresholdBytes: Long = 0L,
+    val perAppAlertThresholdBytes: Long = 0L,
 )

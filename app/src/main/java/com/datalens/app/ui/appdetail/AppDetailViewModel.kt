@@ -9,6 +9,7 @@ import com.datalens.app.data.apps.AppInfoDataSource
 import com.datalens.app.data.repository.SettingsRepository
 import com.datalens.app.data.repository.UsageRepository
 import com.datalens.app.domain.model.AppCategory
+import com.datalens.app.domain.model.ByteTotals
 import com.datalens.app.domain.model.DateRange
 import com.datalens.app.domain.model.Granularity
 import com.datalens.app.domain.model.UsagePeriod
@@ -39,6 +40,8 @@ data class AppDetailUiState(
     val receivedBytes: Long = 0L,
     val transmittedBytes: Long = 0L,
     val periodTotalBytes: Long = 0L,
+    val todayUsage: ByteTotals? = null,
+    val cycleUsage: ByteTotals? = null,
     val series: List<UsagePoint> = emptyList(),
     val granularity: Granularity = Granularity.HOURLY,
     val isPinned: Boolean = false,
@@ -49,6 +52,8 @@ data class AppDetailUiState(
 ) {
     val totalBytes: Long get() = receivedBytes + transmittedBytes
     val hasRealPackage: Boolean get() = !packageName.startsWith("uid:")
+    val todayTotalBytes: Long get() = todayUsage?.totalBytes ?: 0L
+    val cycleTotalBytes: Long get() = cycleUsage?.totalBytes ?: 0L
 }
 
 class AppDetailViewModel(
@@ -110,6 +115,21 @@ class AppDetailViewModel(
                     val allTotals = usageRepository.totals(range.start, range.end)
                     val series = usageRepository.usageSeries(range, period.chartGranularity(), uidFilter = uidArg)
 
+                    // Quick stats: today and the current cycle, regardless of the
+                    // selected period. Same repository, same real numbers.
+                    val todayRange = UsagePeriod.Today.resolveRange(settings.limit.billingCycleStartDay)
+                    val cycleRange = UsagePeriod.CurrentCycle.resolveRange(settings.limit.billingCycleStartDay)
+                    val todayUsage = try {
+                        usageRepository.periodUsage(todayRange, uidFilter = uidArg).totals
+                    } catch (_: Exception) {
+                        null
+                    }
+                    val cycleUsage = try {
+                        usageRepository.periodUsage(cycleRange, uidFilter = uidArg).totals
+                    } catch (_: Exception) {
+                        null
+                    }
+
                     val resolution = try {
                         appInfoDataSource.resolveUid(uidArg)
                     } catch (_: Exception) {
@@ -129,6 +149,8 @@ class AppDetailViewModel(
                             receivedBytes = appUsage?.receivedBytes ?: 0L,
                             transmittedBytes = appUsage?.transmittedBytes ?: 0L,
                             periodTotalBytes = allTotals.totalBytes,
+                            todayUsage = todayUsage,
+                            cycleUsage = cycleUsage,
                             series = series,
                             granularity = period.chartGranularity(),
                             lastUpdated = System.currentTimeMillis(),

@@ -43,7 +43,7 @@ data class AppsUiState(
         }
 
     val visibleApps: List<AppUsageInfo>
-        get() = AppsFilter.apply(apps, effectiveFilter, hiddenPackages)
+        get() = AppsFilter.apply(apps, effectiveFilter, hiddenPackages, pinnedPackages)
 
     val periodTotalBytes: Long
         get() = apps.filter { !hiddenPackages.contains(it.packageName) }

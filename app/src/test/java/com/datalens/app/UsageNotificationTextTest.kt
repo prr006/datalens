@@ -1,5 +1,6 @@
 package com.datalens.app
 
+import com.datalens.app.domain.model.LimitConfig
 import com.datalens.app.notifications.UsageNotificationText
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -45,6 +46,41 @@ class UsageNotificationTextTest {
         assertEquals(
             "↑ 512 B    ↓ 1.0 KB",
             UsageNotificationText.detail(uploadedBytes = 512, downloadedBytes = KB),
+        )
+    }
+
+    @Test
+    fun `cycle line shows usage allowance and percent for configured plans`() {
+        val config = LimitConfig(monthlyAllowanceBytes = 20L * GB)
+        // exactly 10 GiB of 20 GiB = 50 %
+        assertEquals(
+            "Cycle: 10.0 GB of 20 GB (50%)",
+            UsageNotificationText.cycleLine(10L * GB, config),
+        )
+    }
+
+    @Test
+    fun `cycle line marks unlimited plans`() {
+        assertEquals(
+            "Cycle: 10.0 GB · unlimited plan",
+            UsageNotificationText.cycleLine(10L * GB, LimitConfig(isUnlimited = true)),
+        )
+    }
+
+    @Test
+    fun `cycle line shows plain usage when no allowance is set`() {
+        assertEquals(
+            "Cycle: 0 B",
+            UsageNotificationText.cycleLine(0L, LimitConfig()),
+        )
+    }
+
+    @Test
+    fun `cycle line never exceeds 100 percent visually at the limit`() {
+        val config = LimitConfig(monthlyAllowanceBytes = 10L * GB)
+        assertEquals(
+            "Cycle: 10.0 GB of 10 GB (100%)",
+            UsageNotificationText.cycleLine(10L * GB, config),
         )
     }
 }

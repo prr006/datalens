@@ -6,11 +6,13 @@ import androidx.lifecycle.viewModelScope
 import com.datalens.app.data.repository.SettingsRepository
 import com.datalens.app.data.repository.UsageRepository
 import com.datalens.app.domain.model.AppUsageInfo
+import com.datalens.app.domain.model.CycleInsights
 import com.datalens.app.domain.model.LimitStatus
 import com.datalens.app.domain.model.OverviewData
 import com.datalens.app.domain.model.ReportData
 import com.datalens.app.domain.model.UsagePeriod
 import com.datalens.app.domain.usecase.BuildUsageReportUseCase
+import com.datalens.app.domain.usecase.ComputeCycleInsightsUseCase
 import com.datalens.app.domain.usecase.ComputeLimitStatusUseCase
 import com.datalens.app.domain.usecase.GetOverviewDataUseCase
 import com.datalens.app.domain.usecase.ReportFormat
@@ -34,6 +36,7 @@ data class OverviewUiState(
     val hiddenPackages: Set<String> = emptySet(),
     val hideSystemApps: Boolean = false,
     val limitStatus: LimitStatus = LimitStatus.NotConfigured,
+    val cycleInsights: CycleInsights? = null,
     val error: String? = null,
     val errorDetail: String? = null,
     val lastUpdated: Long? = null,
@@ -47,6 +50,7 @@ class OverviewViewModel(
     private val settingsRepository: SettingsRepository,
     private val getOverviewData: GetOverviewDataUseCase,
     private val computeLimitStatus: ComputeLimitStatusUseCase,
+    private val computeCycleInsights: ComputeCycleInsightsUseCase,
     private val buildReport: BuildUsageReportUseCase,
 ) : ViewModel() {
 
@@ -82,8 +86,22 @@ class OverviewViewModel(
                 } else {
                     LimitStatus.NotConfigured
                 }
+                val insights = if (data != null) {
+                    computeCycleInsights(
+                        data.currentCycleSummary.bytes,
+                        data.todaySummary.bytes,
+                        settings.limit,
+                        data.cycleRange,
+                    )
+                } else {
+                    null
+                }
                 _uiState.update {
-                    it.copy(limitStatus = status, hideSystemApps = settings.hideSystemAppsByDefault)
+                    it.copy(
+                        limitStatus = status,
+                        cycleInsights = insights,
+                        hideSystemApps = settings.hideSystemAppsByDefault,
+                    )
                 }
                 if (cycleDayChanged) refresh()
             }
@@ -114,6 +132,12 @@ class OverviewViewModel(
                     val data = getOverviewData(period, settings.limit.billingCycleStartDay)
                     val allApps = usageRepository.fullAppList(data.range)
                     val status = computeLimitStatus(data.currentCycleSummary.bytes, settings.limit)
+                    val insights = computeCycleInsights(
+                        data.currentCycleSummary.bytes,
+                        data.todaySummary.bytes,
+                        settings.limit,
+                        data.cycleRange,
+                    )
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -121,6 +145,7 @@ class OverviewViewModel(
                             data = data,
                             allApps = allApps,
                             limitStatus = status,
+                            cycleInsights = insights,
                             lastUpdated = System.currentTimeMillis(),
                             error = null,
                             errorDetail = null,
@@ -159,10 +184,17 @@ class OverviewViewModel(
         if (stale || state.data == null) refresh()
     }
 
-    suspend fun buildReport(format: ReportFormat): ReportData? {
+    /**
+     * Builds a report for [periodOverride] (e.g. from the export dialog's range
+     * selection), or for the currently selected Overview period when null.
+     */
+    suspend fun buildReport(
+        format: ReportFormat,
+        periodOverride: UsagePeriod? = null,
+    ): ReportData? {
         return try {
             val settings = settingsRepository.uiSettings.first()
-            val period = _uiState.value.period
+            val period = periodOverride ?: _uiState.value.period
             buildReport(period, settings.limit.billingCycleStartDay, format)
         } catch (_: Exception) {
             null

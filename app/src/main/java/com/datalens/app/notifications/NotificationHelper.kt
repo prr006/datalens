@@ -128,6 +128,33 @@ object NotificationHelper {
         post(context, CHANNEL_HIGH, NOTIF_ID_HIGH, title, text)
     }
 
+    /** Daily mobile-data threshold crossed (once per day — see AlertCoordinator). */
+    fun showDailyThresholdAlert(context: Context, usedBytes: Long, thresholdBytes: Long) {
+        post(
+            context,
+            CHANNEL_HIGH,
+            NOTIF_ID_HIGH,
+            title = context.getString(R.string.notif_daily_threshold_title),
+            text = "Today's mobile data: ${ByteFormatter.format(usedBytes)} " +
+                "(your threshold: ${ByteFormatter.format(thresholdBytes)}).",
+        )
+    }
+
+    /** Per-app daily threshold crossed (once per app per day, top 3 listed). */
+    fun showAppThresholdAlert(context: Context, apps: List<Pair<String, Long>>, thresholdBytes: Long) {
+        if (apps.isEmpty()) return
+        val list = apps.joinToString(", ") { (name, bytes) ->
+            "$name (${ByteFormatter.format(bytes)})"
+        }
+        post(
+            context,
+            CHANNEL_HIGH,
+            NOTIF_ID_HIGH,
+            title = context.getString(R.string.notif_app_threshold_title),
+            text = "Apps past ${ByteFormatter.format(thresholdBytes)} of mobile data today: $list.",
+        )
+    }
+
     private fun post(context: Context, channel: String, id: Int, title: String, text: String) {
         if (!canPost(context)) return
 

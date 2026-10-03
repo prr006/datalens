@@ -2,6 +2,12 @@ package com.datalens.app.domain.model
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
+/** Display unit system: binary (1 KB = 1024 B) or decimal/SI (1 KB = 1000 B). */
+enum class UnitsMode(val label: String) {
+    BINARY("Binary · 1 KB = 1024 B"),
+    DECIMAL("Decimal · 1 KB = 1000 B"),
+}
+
 data class NotificationSettings(
     val enabled: Boolean = true,
     val dailySummary: Boolean = true,
@@ -17,6 +23,9 @@ data class UiSettings(
     val hideSystemAppsByDefault: Boolean = false,
     /** Persistent usage-tracking notification (foreground service). */
     val usageTrackingEnabled: Boolean = false,
+    val units: UnitsMode = UnitsMode.BINARY,
+    /** Fast (~45 s) notification refresh while mobile data is active. */
+    val frequentRefresh: Boolean = true,
     val limit: LimitConfig = LimitConfig.DEFAULT,
 )
 

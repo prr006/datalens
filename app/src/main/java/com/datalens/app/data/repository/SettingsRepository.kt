@@ -32,6 +32,8 @@ class SettingsRepository(
                 notifications = p.notifications,
                 hideSystemAppsByDefault = p.hideSystemAppsByDefault,
                 usageTrackingEnabled = p.usageTrackingEnabled,
+                units = p.units,
+                frequentRefresh = p.frequentRefresh,
                 limit = limitEntity?.toDomain() ?: LimitConfig.DEFAULT,
             )
         }
@@ -54,6 +56,16 @@ class SettingsRepository(
     suspend fun setUsageTrackingEnabled(enabled: Boolean) =
         prefs.setUsageTrackingEnabled(enabled)
 
+    suspend fun setUnits(mode: com.datalens.app.domain.model.UnitsMode) = prefs.setUnits(mode)
+
+    suspend fun setFrequentRefresh(enabled: Boolean) = prefs.setFrequentRefresh(enabled)
+
+    suspend fun markDailyThresholdAlertPosted(key: String) =
+        prefs.markDailyThresholdAlertPosted(key)
+
+    suspend fun markAppAlertsPosted(newKeys: List<String>, keepFromIsoDate: String) =
+        prefs.markAppAlertsPosted(newKeys, keepFromIsoDate)
+
     suspend fun saveLimitConfig(config: LimitConfig) {
         db.limitConfigDao().save(
             LimitConfigEntity(
@@ -62,6 +74,9 @@ class SettingsRepository(
                 dailyTargetBytes = config.dailyTargetBytes,
                 billingCycleStartDay = config.billingCycleStartDay,
                 warningThresholdPercent = config.warningThresholdPercent,
+                isUnlimited = config.isUnlimited,
+                dailyAlertThresholdBytes = config.dailyAlertThresholdBytes,
+                perAppAlertThresholdBytes = config.perAppAlertThresholdBytes,
             ),
         )
     }
@@ -93,5 +108,8 @@ class SettingsRepository(
         dailyTargetBytes = dailyTargetBytes,
         billingCycleStartDay = billingCycleStartDay,
         warningThresholdPercent = warningThresholdPercent,
+        isUnlimited = isUnlimited,
+        dailyAlertThresholdBytes = dailyAlertThresholdBytes,
+        perAppAlertThresholdBytes = perAppAlertThresholdBytes,
     )
 }

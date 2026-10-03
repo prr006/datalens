@@ -20,4 +20,19 @@ object UsageNotificationText {
     /** e.g. "↑ 312 MB    ↓ 928 MB" (upload first, download second) */
     fun detail(uploadedBytes: Long, downloadedBytes: Long): String =
         "↑ ${ByteFormatter.format(uploadedBytes)}    ↓ ${ByteFormatter.format(downloadedBytes)}"
+
+    /**
+     * Current billing-cycle line, e.g. "Cycle: 8.9 GB of 20 GB (44%)".
+     * Unlimited plan: "Cycle: 8.9 GB · unlimited plan".
+     * Not configured: "Cycle: 8.9 GB".
+     * Like everything else, [cycleUsedBytes] comes from the real repository.
+     */
+    fun cycleLine(cycleUsedBytes: Long, config: com.datalens.app.domain.model.LimitConfig): String =
+        when {
+            config.isUnlimited -> "Cycle: ${ByteFormatter.format(cycleUsedBytes)} · unlimited plan"
+            config.isAllowanceConfigured -> "Cycle: ${ByteFormatter.format(cycleUsedBytes)} of " +
+                "${ByteFormatter.format(config.monthlyAllowanceBytes)} " +
+                "(${com.datalens.app.util.Formatters.percent(cycleUsedBytes.toDouble() / config.monthlyAllowanceBytes)})"
+            else -> "Cycle: ${ByteFormatter.format(cycleUsedBytes)}"
+        }
 }

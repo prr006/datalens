@@ -21,6 +21,11 @@
     <string name="notif_tracking_turn_off">Turn off</string>
     <string name="notif_tracking_updating_title">Mobile data today</string>
     <string name="notif_tracking_updating_text">Updating…</string>
+    <string name="notif_daily_threshold_title">Daily data threshold reached</string>
+    <string name="notif_app_threshold_title">High app data usage</string>
+    <string name="widget_label">DataLens usage</string>
+    <string name="widget_description">Today\'s and current-cycle mobile data usage.</string>
+    <string name="tile_open_app">Open DataLens</string>
     <string name="notif_tracking_no_access_title">Usage Access needed</string>
     <string name="notif_tracking_no_access_text">Tap to open DataLens and grant Usage Access so today\'s mobile data can be shown.</string>
 
