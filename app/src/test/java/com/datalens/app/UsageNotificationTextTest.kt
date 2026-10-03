@@ -54,7 +54,7 @@ class UsageNotificationTextTest {
         val config = LimitConfig(monthlyAllowanceBytes = 20L * GB)
         // exactly 10 GiB of 20 GiB = 50 %
         assertEquals(
-            "Cycle: 10.0 GB of 20 GB (50%)",
+            "Cycle: 10.0 GB of 20.0 GB (50%)",
             UsageNotificationText.cycleLine(10L * GB, config),
         )
     }
@@ -79,7 +79,7 @@ class UsageNotificationTextTest {
     fun `cycle line never exceeds 100 percent visually at the limit`() {
         val config = LimitConfig(monthlyAllowanceBytes = 10L * GB)
         assertEquals(
-            "Cycle: 10.0 GB of 10 GB (100%)",
+            "Cycle: 10.0 GB of 10.0 GB (100%)",
             UsageNotificationText.cycleLine(10L * GB, config),
         )
     }
