@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   build:
-    name: assembleDebug + unit tests
+    name: debug + release APKs + unit tests
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
@@ -43,10 +43,30 @@ jobs:
           set -o pipefail
           ./gradlew testDebugUnitTest --stacktrace --no-daemon 2>&1 | tee /tmp/test.log
 
+      - name: Build signed release APK (ephemeral CI testing keystore)
+        run: |
+          set -o pipefail
+          # An ephemeral signing key is generated on every run: nothing secret is
+          # ever committed to Git, and the result is a proper optimized, signed
+          # release build. Because the key is throw-away, CI release APKs do NOT
+          # share a signature across runs — uninstall an older CI build before
+          # installing a newer one, or build locally with your own keystore
+          # (README → "Release builds & signing") for a stable signature.
+          KEYSTORE="$HOME/datalens-ci-release.keystore"
+          STOREPASS="$(openssl rand -hex 24)"
+          keytool -genkeypair \
+            -keystore "$KEYSTORE" -storetype PKCS12 \
+            -alias datalens-ci -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass "$STOREPASS" -keypass "$STOREPASS" \
+            -dname "CN=DataLens CI Test, OU=DataLens, O=DataLens, C=IN" 2>/dev/null
+          printf 'storeFile=%s\nstorePassword=%s\nkeyAlias=datalens-ci\nkeyPassword=%s\n' \
+            "$KEYSTORE" "$STOREPASS" "$STOREPASS" > keystore.properties
+          ./gradlew assembleRelease --stacktrace --no-daemon 2>&1 | tee /tmp/release.log
+
       - name: Report errors as annotations
         if: failure()
         run: |
-          for LOG in /tmp/build.log /tmp/test.log; do
+          for LOG in /tmp/build.log /tmp/test.log /tmp/release.log; do
             [ -f "$LOG" ] || continue
             grep -E "^e: |error: |FAILURE: |What went wrong|Execution failed for task" "$LOG" \
               | head -60 | while IFS= read -r line; do
@@ -67,6 +87,7 @@ jobs:
           mkdir -p .github/ci-logs
           cp /tmp/build.log .github/ci-logs/build.log 2>/dev/null || true
           cp /tmp/test.log .github/ci-logs/test.log 2>/dev/null || true
+          cp /tmp/release.log .github/ci-logs/release.log 2>/dev/null || true
           git add .github/ci-logs || true
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "ci: build logs (failed run) [skip ci]"
@@ -94,18 +115,50 @@ jobs:
             "$AAPT" dump badging "$APK" | grep -E "package:|sdkVersion|targetSdkVersion" || true
           fi
 
-      - name: Copy APK to releases/
+      - name: Verify release APK (signed, minified, tracking service present)
+        run: |
+          set -e
+          APK="app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK" || { echo "Release APK missing or empty"; exit 1; }
+          ls -la "$APK"
+          unzip -l "$APK" | grep -q "classes.dex" || { echo "classes.dex missing"; exit 1; }
+          unzip -l "$APK" | grep -q "AndroidManifest.xml" || { echo "manifest missing"; exit 1; }
+          unzip -l "$APK" | grep -q "resources.arsc" || { echo "resources.arsc missing"; exit 1; }
+          BT="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)"
+          "$BT/apksigner" verify --print-certs "$APK" | tee /tmp/certs.txt
+          grep -q "DataLens CI" /tmp/certs.txt || {
+            echo "Release APK is NOT signed with the release key (debug fallback?)"; exit 1;
+          }
+          if [ -x "$BT/aapt" ]; then A="$BT/aapt"; else A="$BT/aapt2"; fi
+          "$A" dump badging "$APK" | grep -E "package:|sdkVersion|targetSdkVersion" || true
+          "$A" dump xmltree "$APK" AndroidManifest.xml > /tmp/manifest-tree.txt || true
+          grep -q "UsageTrackingService" /tmp/manifest-tree.txt || {
+            echo "UsageTrackingService missing from release manifest"; exit 1;
+          }
+          grep -q "TrackingEventsReceiver" /tmp/manifest-tree.txt || {
+            echo "TrackingEventsReceiver missing from release manifest"; exit 1;
+          }
+          grep -q "foregroundServiceType" /tmp/manifest-tree.txt || {
+            echo "foregroundServiceType missing from release manifest"; exit 1;
+          }
+          echo "Release APK verified."
+
+      - name: Copy APKs to releases/
         run: |
           mkdir -p releases
           cp app/build/outputs/apk/debug/app-debug.apk releases/DataLens-debug.apk
+          cp app/build/outputs/apk/release/app-release.apk releases/DataLens-release.apk
           sha256sum releases/DataLens-debug.apk | tee releases/DataLens-debug.apk.sha256
+          sha256sum releases/DataLens-release.apk | tee releases/DataLens-release.apk.sha256
           ls -la releases/
 
-      - name: Upload APK artifact
+      - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: DataLens-debug-apk
-          path: releases/DataLens-debug.apk
+          name: DataLens-apks
+          path: |
+            releases/DataLens-debug.apk
+            releases/DataLens-release.apk
           retention-days: 14
           if-no-files-found: error
 
@@ -135,7 +188,7 @@ jobs:
             echo "No artifact changes to commit."
             exit 0
           fi
-          git commit -m "ci: add debug APK artifact [skip ci]"
+          git commit -m "ci: add APK artifacts [skip ci]"
           for i in 1 2 3 4 5; do
             if git fetch origin "$BRANCH" && git rebase "origin/$BRANCH" && git push origin "HEAD:$BRANCH"; then
               echo "Artifact pushed."

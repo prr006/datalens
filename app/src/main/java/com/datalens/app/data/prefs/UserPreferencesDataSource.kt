@@ -25,6 +25,8 @@ class UserPreferencesDataSource(private val context: Context) {
         val NOTIF_LIMIT = booleanPreferencesKey("notif_limit")
         val NOTIF_HIGH = booleanPreferencesKey("notif_high")
         val HIDE_SYSTEM_APPS = booleanPreferencesKey("hide_system_apps")
+        // Persistent usage-tracking notification (foreground service).
+        val USAGE_TRACKING_ENABLED = booleanPreferencesKey("usage_tracking_enabled")
         // Anti-spam bookkeeping for notifications.
         val LAST_DAILY_NOTIF_DATE = stringPreferencesKey("last_daily_notif_date")
         val LAST_LIMIT_NOTIF_KEY = stringPreferencesKey("last_limit_notif_key")
@@ -46,6 +48,7 @@ class UserPreferencesDataSource(private val context: Context) {
                 highUsageAlerts = prefs[Keys.NOTIF_HIGH] ?: true,
             ),
             hideSystemAppsByDefault = prefs[Keys.HIDE_SYSTEM_APPS] ?: false,
+            usageTrackingEnabled = prefs[Keys.USAGE_TRACKING_ENABLED] ?: false,
             lastDailyNotifDate = prefs[Keys.LAST_DAILY_NOTIF_DATE] ?: "",
             lastLimitNotifKey = prefs[Keys.LAST_LIMIT_NOTIF_KEY] ?: "",
             lastHighNotifKey = prefs[Keys.LAST_HIGH_NOTIF_KEY] ?: "",
@@ -73,6 +76,9 @@ class UserPreferencesDataSource(private val context: Context) {
     suspend fun setHideSystemApps(hide: Boolean) =
         context.dataStore.edit { it[Keys.HIDE_SYSTEM_APPS] = hide }
 
+    suspend fun setUsageTrackingEnabled(enabled: Boolean) =
+        context.dataStore.edit { it[Keys.USAGE_TRACKING_ENABLED] = enabled }
+
     suspend fun setLastDailyNotifDate(date: String) =
         context.dataStore.edit { it[Keys.LAST_DAILY_NOTIF_DATE] = date }
 
@@ -88,6 +94,7 @@ data class UserPreferences(
     val dynamicColors: Boolean = true,
     val notifications: NotificationSettings = NotificationSettings(),
     val hideSystemAppsByDefault: Boolean = false,
+    val usageTrackingEnabled: Boolean = false,
     val lastDailyNotifDate: String = "",
     val lastLimitNotifKey: String = "",
     val lastHighNotifKey: String = "",

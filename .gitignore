@@ -11,4 +11,10 @@ local.properties
 app/build/
 *.apk.idsig
 .kotlin/
+# Release signing — NEVER commit keystores or their credentials.
+# See README "Release builds & signing" for how to create these locally.
+keystore.properties
+*.jks
+*.keystore
+*.p12
 # NOTE: releases/*.apk is intentionally tracked so the built artifact is available from the repo.

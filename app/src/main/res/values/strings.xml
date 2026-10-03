@@ -9,6 +9,8 @@
     <string name="channel_limit_warning_desc">Warnings when you approach your monthly data allowance.</string>
     <string name="channel_high_usage_name">High app usage alerts</string>
     <string name="channel_high_usage_desc">Alerts when a single app uses an unusual amount of mobile data.</string>
+    <string name="channel_usage_tracking_name">Usage tracker</string>
+    <string name="channel_usage_tracking_desc">Silent persistent notification with today\'s mobile-data usage. Updates periodically; never makes a sound.</string>
 
     <!-- Notification contents -->
     <string name="notif_daily_title">Daily mobile-data summary</string>
@@ -16,6 +18,11 @@
     <string name="notif_limit_title">Data limit warning</string>
     <string name="notif_limit_reached_title">Monthly allowance reached</string>
     <string name="notif_high_usage_title">High mobile-data usage</string>
+    <string name="notif_tracking_turn_off">Turn off</string>
+    <string name="notif_tracking_updating_title">Mobile data today</string>
+    <string name="notif_tracking_updating_text">Updating…</string>
+    <string name="notif_tracking_no_access_title">Usage Access needed</string>
+    <string name="notif_tracking_no_access_text">Tap to open DataLens and grant Usage Access so today\'s mobile data can be shown.</string>
 
     <!-- Misc -->
     <string name="export_failed_message">Couldn\'t build the report. Make sure Usage Access is granted, then try again.</string>

@@ -26,9 +26,13 @@ object NotificationHelper {
     const val CHANNEL_LIMIT = "limit_warnings"
     const val CHANNEL_HIGH = "high_usage"
 
+    /** Silent, low-importance channel for the persistent usage tracker. */
+    const val CHANNEL_TRACKING = "usage_tracking"
+
     const val NOTIF_ID_DAILY = 1001
     const val NOTIF_ID_LIMIT = 1002
     const val NOTIF_ID_HIGH = 1003
+    const val NOTIF_ID_TRACKING = 1004
 
     fun createChannels(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
@@ -51,7 +55,19 @@ object NotificationHelper {
             NotificationManager.IMPORTANCE_DEFAULT,
         ).apply { description = context.getString(R.string.channel_high_usage_desc) }
 
-        manager.createNotificationChannels(listOf(daily, limit, high))
+        // Persistent usage tracker: low importance (no heads-up), and explicitly
+        // silent — routine usage updates must never ring or vibrate.
+        val tracking = NotificationChannel(
+            CHANNEL_TRACKING,
+            context.getString(R.string.channel_usage_tracking_name),
+            NotificationManager.IMPORTANCE_LOW,
+        ).apply {
+            description = context.getString(R.string.channel_usage_tracking_desc)
+            setSound(null, null)
+            enableVibration(false)
+        }
+
+        manager.createNotificationChannels(listOf(daily, limit, high, tracking))
     }
 
     /** True when Android will actually show our notifications. */

@@ -31,6 +31,7 @@ class SettingsRepository(
                 dynamicColors = p.dynamicColors,
                 notifications = p.notifications,
                 hideSystemAppsByDefault = p.hideSystemAppsByDefault,
+                usageTrackingEnabled = p.usageTrackingEnabled,
                 limit = limitEntity?.toDomain() ?: LimitConfig.DEFAULT,
             )
         }
@@ -49,6 +50,9 @@ class SettingsRepository(
     suspend fun setNotifications(settings: NotificationSettings) = prefs.setNotifications(settings)
 
     suspend fun setHideSystemAppsByDefault(hide: Boolean) = prefs.setHideSystemApps(hide)
+
+    suspend fun setUsageTrackingEnabled(enabled: Boolean) =
+        prefs.setUsageTrackingEnabled(enabled)
 
     suspend fun saveLimitConfig(config: LimitConfig) {
         db.limitConfigDao().save(

@@ -15,6 +15,8 @@ data class UiSettings(
     val dynamicColors: Boolean = true,
     val notifications: NotificationSettings = NotificationSettings(),
     val hideSystemAppsByDefault: Boolean = false,
+    /** Persistent usage-tracking notification (foreground service). */
+    val usageTrackingEnabled: Boolean = false,
     val limit: LimitConfig = LimitConfig.DEFAULT,
 )
 

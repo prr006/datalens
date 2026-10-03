@@ -19,7 +19,7 @@ usage, data limits, alerts and usage trends — entirely on-device.
 | **Apps** | Every app with mobile usage (and all launchable apps, zero-filled): search, sort (total/download/upload/name, asc/desc), user/system/hidden filters, zero-usage toggle, category filter |
 | **App detail** | Large icon, package, UID, totals, download/upload, share of period, hourly/daily history chart, pin/hide, link to the system App Info screen |
 | **Alerts** | Data-limit status, apps using unusually high data vs their recent 7-day average, apps dominating today's traffic, notification toggles |
-| **Settings** | Appearance (system/light/dark + dynamic colors), data limits (allowance, billing-cycle start day, daily target, warning threshold), notifications, pinned/hidden app management, CSV/JSON export & sharing, privacy notes, about |
+| **Settings** | Appearance (system/light/dark + dynamic colors), data limits (allowance, billing-cycle start day, daily target, warning threshold), notifications, persistent usage-notification tracking, pinned/hidden app management, CSV/JSON export & sharing, privacy notes, about |
 
 Supported periods: **Today · Yesterday · Last 7 days · Last 30 days · This billing
 cycle · Previous billing cycle · Custom range** (Material date-range picker).
@@ -74,12 +74,53 @@ math, period resolution, limit computation, anomaly detection and app filtering.
 without `READ_PHONE_STATE`. Consequently usage is **aggregated across all mobile
 subscriptions (SIMs)** — see *Limitations*.
 
+## Persistent usage notification (notification tracking)
+
+Settings → **Notification tracking** keeps a silent, ongoing notification in the
+shade with today's mobile data, e.g.
+
+```
+DataLens
+Mobile data: 1.24 GB today
+↑ 312 MB    ↓ 928 MB
+```
+
+* **Same real data as the app.** The notification is built from
+  `UsageRepository.totals()` — the identical `NetworkStatsManager`
+  (TYPE_MOBILE) query the Overview screen uses. There is no separate counter and
+  nothing is simulated; with no usage the notification shows `0 B`.
+* **Foreground service.** A `specialUse` foreground service
+  (`UsageTrackingService`) keeps the notification alive reliably. It only runs
+  while you have tracking enabled and stops the moment you switch it off —
+  including via the notification's own **Turn off** action.
+* **Update cadence (deliberately low-frequency):** immediately on start, then
+  **every 15 minutes**, plus one refresh when the **screen turns on** (so the
+  shade is fresh right after waking the device) and whenever you open the app.
+  No wakelocks are held: during deep sleep the timer pauses and refreshes on
+  wake. Android itself batches NetworkStats, so small lag is normal — this is a
+  statistics view, not real-time packet monitoring.
+* **Reboot/update:** a `BOOT_COMPLETED` / `MY_PACKAGE_REPLACED` receiver restarts
+  the service when tracking is enabled. `specialUse` services remain startable
+  from BOOT_COMPLETED on Android 15 (only dataSync/camera/mediaPlayback/phoneCall/
+  mediaProjection/microphone are restricted). If an OEM build refuses anyway,
+  the service is re-anchored the next time you open DataLens.
+* **Permissions handled:** if **Usage Access** is missing, the notification shows
+  a "Usage Access needed" hint (tap to open the app) instead of numbers, and
+  picks up real data automatically once access is granted. If **notification
+  permission** (Android 13+) is missing, the service still runs and the
+  notification appears as soon as you allow notifications — Settings shows a
+  hint in both cases. The notification channel is `IMPORTANCE_LOW` and silent:
+  routine usage updates never ring or vibrate.
+
 ## Permissions
 
 | Permission | Type | Why |
 |---|---|---|
 | `android.permission.PACKAGE_USAGE_STATS` | Special app access ("Usage Access") | Required by Android to read per-app `NetworkStats`. Granted via **Settings → Apps → Special app access → Usage access**. DataLens guides you there on first launch and detects the grant automatically. |
-| `android.permission.POST_NOTIFICATIONS` | Runtime (Android 13+) | Optional; only for the daily summary / limit warnings / high-usage alerts. The app works fully without it. |
+| `android.permission.POST_NOTIFICATIONS` | Runtime (Android 13+) | Optional; only for the daily summary / limit warnings / high-usage alerts / usage-tracking notification. The app works fully without it. |
+| `android.permission.FOREGROUND_SERVICE` | Normal (install-time) | Required to run the optional usage-tracking foreground service (also merged in via WorkManager for periodic checks). |
+| `android.permission.FOREGROUND_SERVICE_SPECIAL_USE` | Normal (install-time) | Declares the usage-tracking foreground service's type — an honest "specialUse" service; it is not data sync, media, location or any other typed use case. |
+| `android.permission.RECEIVE_BOOT_COMPLETED`, `WAKE_LOCK` | Normal (install-time) | Merged in via WorkManager; also used to restore the usage-tracking notification after reboot when you enabled it. |
 
 DataLens deliberately does **not** request `INTERNET`, `READ_PHONE_STATE`,
 `QUERY_ALL_PACKAGES` or any contacts/messages permissions.
@@ -106,32 +147,88 @@ wrapper downloads Gradle 8.9 automatically.
 # → app/build/outputs/apk/debug/app-debug.apk
 
 ./gradlew testDebugUnitTest   # unit tests
-./gradlew assembleRelease     # release build (R8; debug-signed unless keystore.properties exists)
+./gradlew assembleRelease     # release build (R8 minified + shrunk resources)
+# → app/build/outputs/apk/release/app-release.apk
 ```
 
-CI: `.github/workflows/build-apk.yml` builds, tests, verifies and publishes the
-debug APK on every push to `main`/`arena/**` (see *Artifacts* below).
+### Release builds & signing
+
+The release build is minified and resource-shrunk (R8) and is signed with a
+release key when `keystore.properties` exists in the repo root; without it,
+`assembleRelease` falls back to debug signing so the build never breaks.
+
+**No keystore or password is ever committed to Git** — `keystore.properties`,
+`*.jks`, `*.keystore` and `*.p12` are git-ignored.
+
+To create your own local signing key once (JDK's `keytool`, keep the file safe
+and private, never share it):
+
+```bash
+# 1. Generate a 2048-bit RSA key, valid ~27 years, stored as PKCS#12
+keytool -genkeypair -v \
+  -keystore datalens-release.keystore \
+  -storetype PKCS12 \
+  -alias datalens \
+  -keyalg RSA -keysize 2048 -validity 10000
+
+# 2. Create keystore.properties in the repo root (git-ignored) with the
+#    passwords you chose in step 1:
+cat > keystore.properties <<'EOF'
+storeFile=datalens-release.keystore
+storePassword=YOUR_STORE_PASSWORD
+keyAlias=datalens
+keyPassword=YOUR_KEY_PASSWORD
+EOF
+
+# 3. Build the signed release APK
+./gradlew assembleRelease
+# → app/build/outputs/apk/release/app-release.apk
+```
+
+Verify a signature with `apksigner verify --print-certs <apk>`.
+
+**CI signing:** the workflow generates an *ephemeral* testing keystore on every
+run (nothing secret in Git) and publishes a properly signed, minified release
+APK. Because that key is throw-away, CI release builds do **not** share a
+signature across runs — uninstall an older CI release build before installing a
+newer one, or build locally with your own keystore (above) for a stable
+signature that upgrades in place.
+
+**Play Protect note:** release signing makes DataLens a proper production-style
+build (release signing, minification, no `android:debuggable` flag) rather than a
+debug APK, which sideloads more cleanly. It does **not** guarantee Google Play
+Protect will skip its unknown-app scan — Play Protect may still scan or warn
+about any sideloaded app. DataLens does not attempt to disable or bypass Play
+Protect.
+
+CI: `.github/workflows/build-apk.yml` builds, tests, verifies and publishes both
+APKs on every push to `main`/`arena/**` (see *Artifacts* below).
 
 ### Artifacts
 
-* `app/build/outputs/apk/debug/app-debug.apk` — build output
-* `releases/DataLens-debug.apk` — committed copy of the debug APK (built by CI)
-* `releases/DataLens-debug.apk.sha256` — checksum
+* `app/build/outputs/apk/{debug,release}/` — build outputs
+* `releases/DataLens-debug.apk` + `.sha256` — committed copy of the debug APK (built by CI)
+* `releases/DataLens-release.apk` + `.sha256` — committed copy of the signed release APK (built by CI with its ephemeral testing key)
 
 ## Installing on a phone
 
 ```bash
+# Recommended for phones: the signed release build
+adb install -r releases/DataLens-release.apk
+# or the debug build
 adb install -r releases/DataLens-debug.apk
-# or: adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb shell monkey -p com.datalens.app 1   # launch
 ```
 
 Without ADB: copy the APK to the phone, tap it in Files, and allow "Install unknown
-apps" for that file manager when Android asks. The debug APK is signed with the
-standard debug key, which Android accepts for sideloading.
+apps" for that file manager when Android asks. The release APK is a proper
+R8-minified, release-signed build (see *Release builds & signing* for what signing
+does and does not guarantee). A CI release APK and a debug APK (or two different
+CI runs' release APKs) have different signatures — uninstall one before installing
+the other.
 
 * Package id: `com.datalens.app`
-* minSdk 26 (Android 8.0) · targetSdk 35 (Android 15) · versionName 1.0.0
+* minSdk 26 (Android 8.0) · targetSdk 35 (Android 15) · versionName 1.1.0
 
 ## Testing checklist
 
@@ -154,6 +251,9 @@ See the repo's `docs/screenshots/` (when present) for emulator captures.
 * Exports (CSV/JSON) are created only on request via the Storage Access Framework,
   and only leave the device if you explicitly share them.
 * Notifications are optional and generated locally by WorkManager.
+* The optional usage-tracking notification is rendered by a local foreground
+  service from the same on-device statistics — it contains no network code and
+  cannot send anything anywhere (the app has no INTERNET permission at all).
 
 ## Android limitations (honest list)
 
@@ -173,6 +273,12 @@ See the repo's `docs/screenshots/` (when present) for emulator captures.
 * **OEM quirks.** A few devices throw `SecurityException` even with Usage Access
   granted (subscriber-ID restrictions). DataLens shows an error state with a retry
   instead of crashing.
+* **Persistent notification freshness.** The tracking notification updates every
+  15 minutes (plus on screen-on and app open) — it is not a live counter, and the
+  underlying NetworkStats data itself is batched by Android. Aggressive
+  battery-saver modes or OEM app killers can delay updates or stop the service;
+  DataLens restarts it when the app is next opened and never claims real-time
+  accuracy.
 * **Chart granularity.** "Today"/single days use hourly buckets; longer periods use
   daily buckets. This matches what Android can report accurately.
 * **Notification timing.** The daily summary is scheduled with WorkManager

@@ -24,13 +24,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import com.datalens.app.domain.model.UiSettings
+import com.datalens.app.notifications.TrackingController
 import com.datalens.app.ui.navigation.DataLensNavHost
 import com.datalens.app.ui.navigation.Routes
 import com.datalens.app.ui.theme.DataLensTheme
 import com.datalens.app.util.UsageAccess
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+
+    override fun onStart() {
+        super.onStart()
+        // Re-align the usage-tracking foreground service with the persisted
+        // setting — recovers from system/user kills without any extra polling.
+        lifecycleScope.launch { TrackingController.ensureStartedIfEnabled(this@MainActivity) }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

@@ -17,6 +17,7 @@ import com.datalens.app.domain.usecase.BuildUsageReportUseCase
 import com.datalens.app.domain.usecase.ComputeLimitStatusUseCase
 import com.datalens.app.domain.usecase.ReportFormat
 import com.datalens.app.notifications.NotificationHelper
+import com.datalens.app.notifications.TrackingController
 import com.datalens.app.util.TimeUtils
 import com.datalens.app.util.UsageAccess
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -135,6 +136,15 @@ class SettingsViewModel(
 
     fun setHideSystemApps(hide: Boolean) =
         viewModelScope.launch { settingsRepository.setHideSystemAppsByDefault(hide) }
+
+    /**
+     * Enables/disables the persistent usage-tracking notification. The persisted
+     * flag and the foreground service are switched together so they can never
+     * disagree (see TrackingController).
+     */
+    fun setUsageTrackingEnabled(enabled: Boolean) = viewModelScope.launch {
+        TrackingController.setEnabled(appContext, enabled)
+    }
 
     fun saveLimitConfig(config: LimitConfig) = viewModelScope.launch {
         settingsRepository.saveLimitConfig(config)

@@ -284,6 +284,60 @@ fun SettingsScreen(
                 }
             }
 
+            SettingsSection(title = "Notification tracking") {
+                Column(Modifier.padding(horizontal = 16.dp)) {
+                    Text(
+                        "Keep a silent, ongoing notification in the shade with today's " +
+                            "mobile data — no need to open DataLens.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    ToggleRow(
+                        label = "Persistent usage notification",
+                        checked = state.uiSettings.usageTrackingEnabled,
+                        onChecked = { enabled ->
+                            if (enabled && !state.notificationsPermissionGranted &&
+                                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                            ) {
+                                notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            }
+                            viewModel.setUsageTrackingEnabled(enabled)
+                        },
+                    )
+                    Text(
+                        "Shows:\n" +
+                            "\u2022  Today\'s total\n" +
+                            "\u2022  Upload (\u2191)\n" +
+                            "\u2022  Download (\u2193)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        "Updates every 15 minutes and when the screen turns on, using the " +
+                            "same NetworkStatsManager data as the app (Android reports usage " +
+                            "in batches, so numbers may lag slightly).",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (state.uiSettings.usageTrackingEnabled && !state.statsPermissionGranted) {
+                        Text(
+                            "Usage Access is missing — the notification will show a hint " +
+                                "until it is granted (grant it from the app\'s start screen).",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                    if (state.uiSettings.usageTrackingEnabled && !state.notificationsPermissionGranted) {
+                        Text(
+                            "Android is blocking notifications for DataLens — allow them " +
+                                "above, then the tracker appears on its next update.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+            }
+
             SettingsSection(title = "Apps") {
                 SettingsRow(
                     title = "Pinned apps",

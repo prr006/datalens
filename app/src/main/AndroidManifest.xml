@@ -18,6 +18,17 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!--
+      Persistent usage-tracking notification (foreground service).
+      FOREGROUND_SERVICE is also merged in via WorkManager; declared explicitly
+      here for the tracking service. FOREGROUND_SERVICE_SPECIAL_USE is required
+      because the tracker is an honest "specialUse" service — it is not data
+      sync, media or any of the other typed use cases.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
+
+    <!--
       Package visibility (Android 11+):
       DataLens uses the smallest practical configuration instead of QUERY_ALL_PACKAGES.
       * The MAIN/LAUNCHER intent query makes every app with a home-screen icon visible,
@@ -60,6 +71,34 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+          Persistent notification with today's mobile-data usage. Only runs while
+          the user enabled "Notification tracking" in Settings. See
+          UsageTrackingService for cadence and data-source details.
+        -->
+        <service
+            android:name=".notifications.UsageTrackingService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Persistent notification showing today's mobile-data usage, periodically refreshed from NetworkStatsManager via the app's usage repository." />
+        </service>
+
+        <!--
+          Restarts the tracking service after reboot / app update (when enabled by
+          the user) and handles the notification's "Turn off" quick action.
+          BOOT_COMPLETED / MY_PACKAGE_REPLACED are protected system broadcasts.
+        -->
+        <receiver
+            android:name=".notifications.TrackingEventsReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
         <!-- Used exclusively for sharing an exported report via the standard share sheet. -->
         <provider
