@@ -89,15 +89,18 @@ jobs:
       - name: Tap through tabs
         run: |
           # Pixel 5: 1080x2340. Bottom navigation items are evenly spaced.
+          # Nav item centres (1080px wide, 4 items): 135=Overview, 405=Apps,
+          # 675=Alerts, 945=Settings; bar sits near the bottom at y≈2260.
           tap() { adb shell input tap "$1" "$2"; sleep 4; }
-          tap 135 2260   # Apps tab
+          tap 405 2260   # Apps tab
           adb exec-out screencap -p > docs/screenshots/02-apps.png
           tap 675 2260   # Alerts tab
           adb exec-out screencap -p > docs/screenshots/03-alerts.png
           tap 945 2260   # Settings tab
           adb exec-out screencap -p > docs/screenshots/04-settings.png
-          tap 135 2260   # back to Apps
-          # open the first app row (top of list area)
+          tap 405 2260   # back to Apps
+          # Open the first list row (list may be empty on a fresh emulator —
+          # the tap is then a harmless no-op on the empty state).
           tap 540 900
           sleep 4
           adb exec-out screencap -p > docs/screenshots/05-app-detail.png
