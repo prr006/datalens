@@ -29,6 +29,7 @@ Daemon will be stopped at the end of the build
 > Task :app:parseDebugLocalResources
 > Task :app:processDebugMainManifest
 > Task :app:processDebugManifest
+> Task :app:processDebugManifestForPackage
 > Task :app:javaPreCompileDebug
 > Task :app:mergeDebugShaders
 > Task :app:compileDebugShaders NO-SOURCE
@@ -36,9 +37,9 @@ Daemon will be stopped at the end of the build
 > Task :app:mergeDebugAssets
 > Task :app:compressDebugAssets
 > Task :app:desugarDebugFileDependencies
-> Task :app:processDebugManifestForPackage
-> Task :app:checkDebugDuplicateClasses
 > Task :app:processDebugResources
+> Task :app:checkDebugDuplicateClasses
+> Task :app:kspDebugKotlin
 > Task :app:mergeExtDexDebug
 > Task :app:mergeDebugJniLibFolders
 > Task :app:mergeLibDexDebug
@@ -51,24 +52,46 @@ Unable to strip the following libraries, packaging them as they are: libandroidx
 
 > Task :app:writeDebugSigningConfigVersions
 
-> Task :app:kspDebugKotlin
-e: The daemon has terminated unexpectedly on startup attempt #1 with error code: 0. The daemon process output:
-    1. Kotlin compile daemon is ready
-e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/data/apps/AppInfoDataSource.kt:297:63 Expecting an element
-e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/data/apps/AppInfoDataSource.kt:303:94 Expecting an element
-e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/data/apps/AppInfoDataSource.kt:308:98 Expecting an element
-e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/data/apps/AppInfoDataSource.kt:313:74 Expecting an element
-e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/data/apps/AppInfoDataSource.kt:319:71 Expecting an element
-e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/data/apps/AppInfoDataSource.kt:324:96 Expecting an element
-e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/data/apps/AppInfoDataSource.kt:331:96 Expecting an element
+> Task :app:compileDebugKotlin
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/data/apps/AppInfoDataSource.kt:287:33 Unresolved reference 'CATEGORY_EMAIL'.
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/domain/model/UsagePeriod.kt:103:24 Unresolved reference 'id'.
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/ui/alerts/AlertsScreen.kt:29:35 Unresolved reference 'PullToRefreshBox'.
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/ui/alerts/AlertsScreen.kt:116:9 Unresolved reference 'PullToRefreshBox'.
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/ui/alerts/AlertsScreen.kt:125:21 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/ui/alerts/AlertsScreen.kt:125:66 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/ui/alerts/AlertsScreen.kt:130:36 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/ui/alerts/AlertsScreen.kt:132:40 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/ui/alerts/AlertsScreen.kt:139:25 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/ui/alerts/AlertsViewModel.kt:99:53 Argument type mismatch: actual type is 'com.datalens.app.domain.model.ByteTotals', but 'kotlin.Long' was expected.
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/ui/appdetail/AppDetailScreen.kt:74:36 Unresolved reference 'it'.
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/ui/apps/AppsScreen.kt:29:35 Unresolved reference 'PullToRefreshBox'.
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/ui/apps/AppsScreen.kt:104:9 Unresolved reference 'PullToRefreshBox'.
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/ui/apps/AppsScreen.kt:113:21 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/ui/apps/AppsScreen.kt:113:66 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/ui/apps/AppsScreen.kt:118:60 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/ui/apps/AppsScreen.kt:120:64 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/ui/apps/AppsScreen.kt:127:25 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/ui/components/Export.kt:102:27 Type 'androidx.compose.runtime.State<android.content.Context>' has no method 'getValue(Nothing?, KProperty0<*>)', so it cannot serve as a delegate.
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/ui/navigation/Destinations.kt:46:51 Unresolved reference 'id'.
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/ui/overview/OverviewScreen.kt:27:35 Unresolved reference 'PullToRefreshBox'.
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/ui/overview/OverviewScreen.kt:157:9 Unresolved reference 'PullToRefreshBox'.
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/ui/overview/OverviewScreen.kt:166:21 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/ui/overview/OverviewScreen.kt:169:30 Unresolved reference 'verticalScroll'.
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/ui/overview/OverviewScreen.kt:169:45 Unresolved reference 'rememberScrollState'.
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/ui/overview/OverviewScreen.kt:176:58 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/ui/overview/OverviewScreen.kt:180:62 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/ui/overview/OverviewScreen.kt:187:25 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/ui/overview/OverviewScreen.kt:201:43 Unresolved reference 'verticalScroll'.
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/ui/settings/SettingsScreen.kt:187:38 Smart cast to 'com.datalens.app.domain.model.DateRange' is impossible, because 'cycleRange' is a delegated property.
+e: file:///home/runner/work/datalens/datalens/app/src/main/java/com/datalens/app/work/LimitCheckWorker.kt:47:56 Argument type mismatch: actual type is 'com.datalens.app.domain.model.ByteTotals', but 'kotlin.Long' was expected.
 
-> Task :app:kspDebugKotlin FAILED
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1791012277248.json
+> Task :app:compileDebugKotlin FAILED
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1791012480201.json
 
 FAILURE: Build failed with an exception.
 
 * What went wrong:
-Execution failed for task ':app:kspDebugKotlin'.
+Execution failed for task ':app:compileDebugKotlin'.
 > A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
    > Compilation error. See log for more details
 
@@ -78,7 +101,7 @@ Execution failed for task ':app:kspDebugKotlin'.
 > Get more help at https://help.gradle.org.
 
 * Exception is:
-org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:kspDebugKotlin'.
+org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:compileDebugKotlin'.
 	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.lambda$executeIfValid$1(ExecuteActionsTaskExecuter.java:130)
 	at org.gradle.internal.Try$Failure.ifSuccessfulOrElse(Try.java:293)
 	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeIfValid(ExecuteActionsTaskExecuter.java:128)
@@ -272,5 +295,5 @@ Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilat
 	... 2 more
 
 
-BUILD FAILED in 2m 23s
-29 actionable tasks: 29 executed
+BUILD FAILED in 2m 34s
+30 actionable tasks: 30 executed
