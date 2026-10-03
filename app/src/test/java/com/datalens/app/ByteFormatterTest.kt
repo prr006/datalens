@@ -36,14 +36,15 @@ class ByteFormatterTest {
         assertEquals("12.7 MB", ByteFormatter.format(13_316_966))
         assertEquals("843 MB", ByteFormatter.format(843 * MB))
         assertEquals("391 MB", ByteFormatter.format(391 * MB))
-        assertEquals("99.9 MB", ByteFormatter.format(104_806_400))
+        assertEquals("99.9 MB", ByteFormatter.format(104_752_742))
+        assertEquals("100 MB", ByteFormatter.format(104_806_400))
     }
 
     @Test
     fun `gigabytes follow spec examples`() {
         assertEquals("1.42 GB", ByteFormatter.format(1_524_552_484))
         assertEquals("8.72 GB", ByteFormatter.format(9_362_001_068))
-        assertEquals("23.4 GB", ByteFormatter.format(23_400_000_000))
+        assertEquals("23.4 GB", ByteFormatter.format(25_125_558_682))
         assertEquals("512 GB", ByteFormatter.format(512 * GB))
     }
 

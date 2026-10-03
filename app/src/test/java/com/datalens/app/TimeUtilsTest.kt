@@ -35,8 +35,8 @@ class TimeUtilsTest {
         // Cycle starting Jan 31; February has 28 days in 2026.
         val today = LocalDate.of(2026, 2, 10)
         val range = TimeUtils.billingCycleRange(31, today, zone)
-        assertEquals(millisOf(LocalDate.of(2025, 12, 31)), range.start)
-        assertEquals(millisOf(LocalDate.of(2026, 1, 31)), range.end)
+        assertEquals(millisOf(LocalDate.of(2026, 1, 31)), range.start)
+        assertEquals(millisOf(LocalDate.of(2026, 2, 28)), range.end)
 
         val today2 = LocalDate.of(2026, 3, 5)
         val range2 = TimeUtils.billingCycleRange(31, today2, zone)

@@ -24,7 +24,7 @@ class ComputeLimitStatusTest {
         val used = 8_722_864_128L // ~8.12 GiB
         val status = useCase(used, LimitConfig(monthlyAllowanceBytes = allowance)) as LimitStatus.Active
         assertEquals(allowance - used, status.remainingBytes)
-        assertEquals(43.6, status.percentUsed, 0.1)
+        assertEquals(40.6, status.percentUsed, 0.1)
         assertEquals(false, status.exceeded)
     }
 

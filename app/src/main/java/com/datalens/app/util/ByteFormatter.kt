@@ -14,15 +14,16 @@ object ByteFormatter {
 
     fun format(bytes: Long): String {
         if (bytes <= 0L) return "0 B"
+        if (bytes < 1024L) return "$bytes B"
         val kb = bytes / 1024.0
-        if (kb < 1024.0) return oneDecimal(kb) + " KB"
-        val mb = kb / 1024.0
-        if (mb < 100.0) return oneDecimal(mb) + " MB"
-        if (mb < 1024.0) return zeroDecimal(mb) + " MB"
-        val gb = mb / 1024.0
-        if (gb < 10.0) return twoDecimals(gb) + " GB"
-        if (gb < 100.0) return oneDecimal(gb) + " GB"
-        if (gb < 1024.0) return zeroDecimal(gb) + " GB"
+        if (kb < 1023.95) return oneDecimal(kb) + " KB"
+        val mb = bytes / (1024.0 * 1024.0)
+        if (mb < 99.95) return oneDecimal(mb) + " MB"
+        if (mb < 1023.95) return zeroDecimal(mb) + " MB"
+        val gb = bytes / (1024.0 * 1024.0 * 1024.0)
+        if (gb < 9.995) return twoDecimals(gb) + " GB"
+        if (gb < 99.95) return oneDecimal(gb) + " GB"
+        if (gb < 1023.95) return zeroDecimal(gb) + " GB"
         val tb = gb / 1024.0
         return twoDecimals(tb) + " TB"
     }
@@ -30,9 +31,14 @@ object ByteFormatter {
     /** Compact form used in tight chart labels (e.g. "1.4 GB", "512 MB"). */
     fun formatCompact(bytes: Long): String {
         if (bytes <= 0L) return "0 B"
+        if (bytes < 1024L) return "$bytes B"
+        val kb = bytes / 1024.0
+        if (kb < 1023.95) return if (kb < 10.0) oneDecimal(kb) + " KB" else zeroDecimal(kb) + " KB"
         val mb = bytes / (1024.0 * 1024.0)
-        if (mb < 1.0) return format(bytes)
-        return format(bytes)
+        if (mb < 1023.95) return if (mb < 10.0) oneDecimal(mb) + " MB" else zeroDecimal(mb) + " MB"
+        val gb = bytes / (1024.0 * 1024.0 * 1024.0)
+        if (gb < 1023.95) return oneDecimal(gb) + " GB"
+        return zeroDecimal(gb / 1024.0) + " TB"
     }
 
     /** Parses a user-entered quantity (e.g. "20" or "1.5") in the given unit into bytes. */
@@ -65,10 +71,11 @@ object Formatters {
     /** 0.436 -> "43.6%", 0.38 -> "38%", 0.081 -> "8.1%". */
     fun percent(fraction: Double): String {
         val pct = fraction * 100.0
-        return if (kotlin.math.abs(pct) >= 10.0) {
-            String.format(Locale.US, "%.0f%%", pct)
+        val rounded = kotlin.math.round(pct * 10.0) / 10.0
+        return if (rounded == kotlin.math.floor(rounded)) {
+            String.format(Locale.US, "%.0f%%", rounded)
         } else {
-            String.format(Locale.US, "%.1f%%", pct)
+            String.format(Locale.US, "%.1f%%", rounded)
         }
     }
 
@@ -79,10 +86,11 @@ object Formatters {
     fun signedPercent(fraction: Double): String {
         val pct = fraction * 100.0
         val sign = if (pct >= 0) "+" else "-"
-        return if (kotlin.math.abs(pct) >= 10.0) {
-            String.format(Locale.US, "%s%.0f%%", sign, kotlin.math.abs(pct))
+        val rounded = kotlin.math.round(kotlin.math.abs(pct) * 10.0) / 10.0
+        return if (rounded == kotlin.math.floor(rounded)) {
+            String.format(Locale.US, "%s%.0f%%", sign, rounded)
         } else {
-            String.format(Locale.US, "%s%.1f%%", sign, kotlin.math.abs(pct))
+            String.format(Locale.US, "%s%.1f%%", sign, rounded)
         }
     }
 }
