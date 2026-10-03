@@ -15,21 +15,21 @@ To honour the JVM settings for this build a single-use Daemon process will be fo
 Daemon will be stopped at the end of the build 
 
 > Configure project :app
-e: file:///home/runner/work/datalens/datalens/app/build.gradle.kts:27:47: Unresolved reference: util
-w: file:///home/runner/work/datalens/datalens/app/build.gradle.kts:30:69: No cast needed
-w: file:///home/runner/work/datalens/datalens/app/build.gradle.kts:31:59: No cast needed
-w: file:///home/runner/work/datalens/datalens/app/build.gradle.kts:32:65: No cast needed
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1791011984760.json
+e: file:///home/runner/work/datalens/datalens/app/build.gradle.kts:29:47: Unresolved reference: util
+w: file:///home/runner/work/datalens/datalens/app/build.gradle.kts:32:69: No cast needed
+w: file:///home/runner/work/datalens/datalens/app/build.gradle.kts:33:59: No cast needed
+w: file:///home/runner/work/datalens/datalens/app/build.gradle.kts:34:65: No cast needed
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1791012126114.json
 
 FAILURE: Build failed with an exception.
 
 * Where:
-Build file '/home/runner/work/datalens/datalens/app/build.gradle.kts' line: 27
+Build file '/home/runner/work/datalens/datalens/app/build.gradle.kts' line: 29
 
 * What went wrong:
 Script compilation error:
 
-  Line 27:                 val keystoreProperties = java.util.Properties()
+  Line 29:                 val keystoreProperties = java.util.Properties()
                                                          ^ Unresolved reference: util
 
 1 error
@@ -40,7 +40,7 @@ Script compilation error:
 > Get more help at https://help.gradle.org.
 
 * Exception is:
-ScriptCompilationException(scriptCompilationErrors=[ScriptCompilationError(message=Unresolved reference: util, location=/home/runner/.gradle/.tmp/gradle-kotlin-dsl-14370900553016522881.tmp/build.gradle.kts (27:47))])
+ScriptCompilationException(scriptCompilationErrors=[ScriptCompilationError(message=Unresolved reference: util, location=/home/runner/.gradle/.tmp/gradle-kotlin-dsl-9172393371569751268.tmp/build.gradle.kts (29:47))])
 	at org.gradle.kotlin.dsl.support.KotlinCompilerKt.compileKotlinScriptModuleTo(KotlinCompiler.kt:190)
 	at org.gradle.kotlin.dsl.support.KotlinCompilerKt.compileKotlinScriptToDirectory(KotlinCompiler.kt:148)
 	at org.gradle.kotlin.dsl.execution.ResidualProgramCompiler$compileScript$1.invoke(ResidualProgramCompiler.kt:712)
@@ -296,4 +296,4 @@ ScriptCompilationException(scriptCompilationErrors=[ScriptCompilationError(messa
 	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:48)
 
 
-BUILD FAILED in 1m 5s
+BUILD FAILED in 1m 2s
