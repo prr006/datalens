@@ -1,0 +1,14 @@
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+app/build/
+*.apk.idsig
+.kotlin/
+# NOTE: releases/*.apk is intentionally tracked so the built artifact is available from the repo.

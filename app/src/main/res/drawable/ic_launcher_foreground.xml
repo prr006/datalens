@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- DataLens launcher foreground: a magnifier (lens) over usage bars. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- usage bars -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M33,58 h9 v16 h-9 z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M46,48 h9 v26 h-9 z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M59,54 h9 v20 h-9 z" />
+
+    <!-- lens -->
+    <path
+        android:pathData="M52,26 a24,24 0 1 0 0.001,0 z"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="6"
+        android:fillColor="#00000000" />
+
+    <!-- lens handle -->
+    <path
+        android:pathData="M69,69 L80,80"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="7"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+</vector>

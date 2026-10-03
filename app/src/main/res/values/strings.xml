@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DataLens</string>
+
+    <!-- Notification channel names (visible in Android notification settings) -->
+    <string name="channel_daily_summary_name">Daily usage summary</string>
+    <string name="channel_daily_summary_desc">A short daily summary of your mobile-data usage.</string>
+    <string name="channel_limit_warning_name">Data limit warnings</string>
+    <string name="channel_limit_warning_desc">Warnings when you approach your monthly data allowance.</string>
+    <string name="channel_high_usage_name">High app usage alerts</string>
+    <string name="channel_high_usage_desc">Alerts when a single app uses an unusual amount of mobile data.</string>
+
+    <!-- Notification contents -->
+    <string name="notif_daily_title">Daily mobile-data summary</string>
+    <string name="notif_daily_zero_text">Your apps used no mobile data today.</string>
+    <string name="notif_limit_title">Data limit warning</string>
+    <string name="notif_limit_reached_title">Monthly allowance reached</string>
+    <string name="notif_high_usage_title">High mobile-data usage</string>
+
+    <!-- Misc -->
+    <string name="export_failed_message">Couldn\'t build the report. Make sure Usage Access is granted, then try again.</string>
+</resources>
