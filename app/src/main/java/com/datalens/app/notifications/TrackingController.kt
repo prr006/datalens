@@ -10,6 +10,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.datalens.app.MainActivity
 import com.datalens.app.R
+import com.datalens.app.widget.UsageWidgetProvider
 import com.datalens.app.ServiceLocator
 import kotlinx.coroutines.flow.first
 

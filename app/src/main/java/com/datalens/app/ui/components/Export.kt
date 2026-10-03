@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -166,6 +167,7 @@ private enum class ExportRangeOption(val label: String) {
  * days or a custom date range via the Material date-range picker), then save
  * via SAF or share via the standard share sheet.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExportDialog(
     share: Boolean,
@@ -290,7 +292,10 @@ fun ExportDialog(
                     val selection = when (rangeOption) {
                         ExportRangeOption.CURRENT_CYCLE -> ExportSelection.CurrentCycle
                         ExportRangeOption.LAST_30_DAYS -> ExportSelection.LastThirtyDays
-                        ExportRangeOption.CUSTOM -> customStartEnd!!
+                        ExportRangeOption.CUSTOM -> ExportSelection.Custom(
+                            customStartEnd!!.first,
+                            customStartEnd!!.second,
+                        )
                     }
                     onConfirm(format, selection)
                 },

@@ -39,7 +39,7 @@ class UsageWidgetProvider : AppWidgetProvider() {
         fun pushUpdate(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
             val ids = manager.getAppWidgetIds(ComponentName(context, UsageWidgetProvider::class.java))
-            if (ids.isNullOrEmpty()) return
+            if (ids.isEmpty()) return
             manager.updateAppWidget(ids, buildViews(context))
         }
 
