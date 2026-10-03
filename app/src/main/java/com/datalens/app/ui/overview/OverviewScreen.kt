@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.MoreVert
@@ -24,7 +26,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PullToRefreshBox
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -54,6 +55,7 @@ import com.datalens.app.domain.model.AppUsageInfo
 import com.datalens.app.domain.model.UsagePeriod
 import com.datalens.app.domain.usecase.ReportFormat
 import com.datalens.app.ui.components.AppUsageRow
+import com.datalens.app.ui.components.DataLensPullToRefresh
 import com.datalens.app.ui.components.DisclaimerCard
 import com.datalens.app.ui.components.EmptyState
 import com.datalens.app.ui.components.ErrorState
@@ -154,7 +156,7 @@ fun OverviewScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
-        PullToRefreshBox(
+        DataLensPullToRefresh(
             isRefreshing = state.isRefreshing,
             onRefresh = { viewModel.refresh(force = true) },
             modifier = Modifier
@@ -195,10 +197,6 @@ fun OverviewScreen(
         }
     }
 }
-
-/** Small helper: vertical scroll for non-lazy content. */
-private fun Modifier.verticalScrollable(): Modifier =
-    this.then(androidx.compose.foundation.verticalScroll(androidx.compose.foundation.ScrollState(0)))
 
 @Composable
 private fun ExportOverflowMenu(

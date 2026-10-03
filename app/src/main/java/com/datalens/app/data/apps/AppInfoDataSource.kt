@@ -283,9 +283,7 @@ class AppInfoDataSource(private val context: Context) {
                 ApplicationInfo.CATEGORY_AUDIO -> return AppCategory.MUSIC_AUDIO
                 ApplicationInfo.CATEGORY_GAME -> return AppCategory.GAMES
                 ApplicationInfo.CATEGORY_SOCIAL -> return AppCategory.SOCIAL
-                ApplicationInfo.CATEGORY_PRODUCTIVITY,
-                ApplicationInfo.CATEGORY_EMAIL,
-                -> return AppCategory.PRODUCTIVITY
+                ApplicationInfo.CATEGORY_PRODUCTIVITY -> return AppCategory.PRODUCTIVITY
                 else -> Unit
             }
         }

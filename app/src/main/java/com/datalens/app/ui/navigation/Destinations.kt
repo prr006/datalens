@@ -43,7 +43,7 @@ object Routes {
 
     /** Rebuilds the period carried by an app-detail route. */
     fun periodFromArgs(periodId: String, startEpochDay: Long, endEpochDay: Long): UsagePeriod {
-        return if (periodId == UsagePeriod.Custom.id && startEpochDay > 0 && endEpochDay >= startEpochDay) {
+        return if (periodId == UsagePeriod.Custom.CUSTOM_ID && startEpochDay > 0 && endEpochDay >= startEpochDay) {
             UsagePeriod.Custom(
                 java.time.LocalDate.ofEpochDay(startEpochDay),
                 java.time.LocalDate.ofEpochDay(endEpochDay),

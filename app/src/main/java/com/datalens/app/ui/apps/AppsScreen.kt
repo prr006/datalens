@@ -26,7 +26,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.PullToRefreshBox
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -51,6 +50,7 @@ import com.datalens.app.domain.model.AppListSort
 import com.datalens.app.domain.model.AppTypeFilter
 import com.datalens.app.domain.model.UsagePeriod
 import com.datalens.app.ui.components.AppUsageRow
+import com.datalens.app.ui.components.DataLensPullToRefresh
 import com.datalens.app.ui.components.DisclaimerCard
 import com.datalens.app.ui.components.EmptyState
 import com.datalens.app.ui.components.ErrorState
@@ -101,7 +101,7 @@ fun AppsScreen(
             )
         },
     ) { padding ->
-        PullToRefreshBox(
+        DataLensPullToRefresh(
             isRefreshing = state.isRefreshing,
             onRefresh = { viewModel.refresh(force = true) },
             modifier = Modifier

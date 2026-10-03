@@ -44,7 +44,7 @@ class LimitCheckWorker(appContext: Context, params: WorkerParameters) :
 
         val cycleRange = TimeUtils.billingCycleRange(config.billingCycleStartDay)
         val used = ServiceLocator.usageRepository.totals(cycleRange.start, cycleRange.end)
-        val status = ServiceLocator.computeLimitStatus(used, config)
+        val status = ServiceLocator.computeLimitStatus(used.totalBytes, config)
         if (status !is LimitStatus.Active) return
 
         val level = if (status.percentUsed >= 100.0) 100 else config.warningThresholdPercent

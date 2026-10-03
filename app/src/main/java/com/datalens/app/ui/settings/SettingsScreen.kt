@@ -181,10 +181,11 @@ fun SettingsScreen(
             }
 
             SettingsSection(title = "Data") {
-                if (state.cycleRange != null) {
+                val cycleRange = state.cycleRange
+                if (cycleRange != null) {
                     LimitCard(
                         status = state.limitStatus,
-                        cycleRange = state.cycleRange,
+                        cycleRange = cycleRange,
                         modifier = Modifier.padding(bottom = 4.dp),
                     )
                 }

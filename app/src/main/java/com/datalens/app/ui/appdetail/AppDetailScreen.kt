@@ -71,7 +71,7 @@ fun AppDetailScreen(
         initializer = {
             AppDetailViewModel(
                 appContext = ServiceLocator.appContext,
-                savedStateHandle = it.createSavedStateHandle(),
+                savedStateHandle = this.createSavedStateHandle(),
                 usageRepository = ServiceLocator.usageRepository,
                 settingsRepository = ServiceLocator.settingsRepository,
                 appInfoDataSource = ServiceLocator.appInfoDataSource,

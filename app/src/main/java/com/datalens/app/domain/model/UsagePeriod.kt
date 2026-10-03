@@ -35,10 +35,14 @@ sealed interface UsagePeriod {
     }
 
     data class Custom(val startDate: LocalDate, val endDateInclusive: LocalDate) : UsagePeriod {
-        override val id: String = "custom"
+        override val id: String get() = CUSTOM_ID
 
         init {
             require(!startDate.isAfter(endDateInclusive)) { "Custom range start after end" }
+        }
+
+        companion object {
+            const val CUSTOM_ID = "custom"
         }
     }
 
@@ -100,7 +104,7 @@ sealed interface UsagePeriod {
                 LastThirtyDays.id -> LastThirtyDays
                 CurrentCycle.id -> CurrentCycle
                 PreviousCycle.id -> PreviousCycle
-                Custom.id -> {
+                Custom.CUSTOM_ID -> {
                     var start = TimeUtils.localDateOf(startMillis)
                     var endIncl = TimeUtils.localDateOf(endMillis - 1)
                     if (endIncl.isBefore(start)) endIncl = start

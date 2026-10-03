@@ -96,7 +96,7 @@ class AlertsViewModel(
                     val cycleUsed = usageRepository.totals(cycleRange.start, cycleRange.end)
 
                     val alerts = detectAnomalies(todayUsage.apps, previous7.apps, 7)
-                    val status = computeLimitStatus(cycleUsed, settings.limit)
+                    val status = computeLimitStatus(cycleUsed.totalBytes, settings.limit)
 
                     _uiState.update {
                         it.copy(

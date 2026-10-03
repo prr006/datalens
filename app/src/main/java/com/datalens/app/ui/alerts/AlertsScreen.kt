@@ -26,7 +26,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PullToRefreshBox
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -51,6 +50,7 @@ import com.datalens.app.ServiceLocator
 import com.datalens.app.domain.model.AlertKind
 import com.datalens.app.domain.model.UsageAlert
 import com.datalens.app.ui.components.AppIcon
+import com.datalens.app.ui.components.DataLensPullToRefresh
 import com.datalens.app.ui.components.EmptyState
 import com.datalens.app.ui.components.ErrorState
 import com.datalens.app.ui.components.LimitCard
@@ -113,7 +113,7 @@ fun AlertsScreen(
             )
         },
     ) { padding ->
-        PullToRefreshBox(
+        DataLensPullToRefresh(
             isRefreshing = state.isRefreshing,
             onRefresh = { viewModel.refresh(force = true) },
             modifier = Modifier
